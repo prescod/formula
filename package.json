@@ -1,0 +1,23 @@
+{
+  "name": "formula-compiler",
+  "version": "1.0.1",
+  "description": "Compile spreadsheet formula to JavaScript.",
+  "main": "lib/formula-compiler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FormulaPages/formula-compiler.git"
+  },
+  "keywords": [
+    "spreadsheet",
+    "formula"
+  ],
+  "author": "Peter W Moresi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/FormulaPages/formula-compiler/issues"
+  },
+  "homepage": "https://github.com/FormulaPages/formula-compiler#readme"
+}
