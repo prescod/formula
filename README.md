@@ -2,9 +2,7 @@
 
 Compile a spreadsheet formula to JavaScript that accepts a context.
 
-The context object must have a "get" function to access internal state.
-
-This function works with workbook.fn or formula.js.
+The context object must have a "get" function to access your workbook state.
 
 ## USAGE
 
