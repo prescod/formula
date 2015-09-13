@@ -13,7 +13,7 @@ The context object must have a "get" function to access your workbook state.
     var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
     console.log(myFunction({}, requirements));
 
-The compiler supports 4 modes:
+The compiler supports modes:
 
 1. Compile function (default)
 2. Code
