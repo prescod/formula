@@ -20,6 +20,12 @@ describe('formulaCompiler', function() {
       
     });
 
+    it('it should run README example', function() {
+      var myFunction = compile('IF(TRUE, "Works!", "Broken")');
+      var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
+     assert(myFunction({}, requirements) === "Works!", "Does not work");
+    });
+    
     it('it should do basic math', function () {
       var f = compile('1+1=4-2'),
           requirements = f.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});

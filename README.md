@@ -10,11 +10,13 @@ The context object must have a "get" function to access your workbook state.
 
     var compiler = require('formula-compiler');
     var myFunction = compiler.compile('IF(TRUE, "Works!", "Broken")');
-    console.log(myFunction());
+    var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
+    console.log(myFunction({}, requirements));
 
 The compiler supports 4 modes:
 
-1.  Compile function (default)
-2.  Code
-3.  Code wrapped in function
-4.  List of precedents
+1. Compile function (default)
+2. Code
+3. Code wrapped in function
+4. List of precedents
+5. List of requirements (functions used by formula)
