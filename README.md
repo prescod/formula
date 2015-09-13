@@ -1,5 +1,7 @@
 # Formula Compiler
 
+![circleci](https://circleci.com/gh/FormulaPages/compiler.svg?style=shield&circle-token=:circle-token)
+
 Compile a spreadsheet formula to JavaScript that accepts a context.
 
 The context object must have a "get" function to access your workbook state.
