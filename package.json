@@ -1,6 +1,6 @@
 {
   "name": "formula-compiler",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/formula-compiler.js",
   "scripts": {

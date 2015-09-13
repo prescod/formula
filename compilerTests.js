@@ -21,9 +21,13 @@ describe('formulaCompiler', function() {
     });
 
     it('it should run README example', function() {
-      var myFunction = compile('IF(TRUE, "Works!", "Broken")');
+      var data = { SuccessText: "Works!" };
+      var context = { get: function(k) { return data[k]; } };
+      var myFunction = compiler.compile('IF(TRUE, SuccessText, "Broken")');
       var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
-     assert(myFunction({}, requirements) === "Works!", "Does not work");
+      var result = myFunction(context, requirements)
+        
+      assert(result === "Works!", "Does not work. Result: " + result);
     });
     
     it('it should do basic math', function () {
