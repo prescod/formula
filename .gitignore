@@ -1,14 +1,1 @@
 node_modules/*
-js/.module-cache/*.js
-js/.module-cache/manifest/*.json
-*~
-*.swp
-build
-bower_components
-vendor
-/.DS_Store
-/css/.DS_Store
-/data/.DS_Store
-/src/components/.tern-port
-/src/stores/.tern-port
-/lib/.tern-port
