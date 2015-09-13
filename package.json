@@ -1,6 +1,6 @@
 {
   "name": "formula-compiler",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/formula-compiler.js",
   "scripts": {
@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/FormulaPages/formula-compiler/issues"
   },
-  "homepage": "https://github.com/FormulaPages/formula-compiler#readme"
+  "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
+  "dependencies": {
+    "formula-ast": "^2.0.0"
+  }
 }
