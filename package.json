@@ -1,10 +1,10 @@
 {
   "name": "formula-compiler",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/formula-compiler.js",
   "scripts": {
-    "test": "mocha formulaParserTest.js"
+    "test": "mocha compilerTests.js"
   },
   "repository": {
     "type": "git",
