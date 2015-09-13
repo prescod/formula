@@ -1,10 +1,10 @@
 {
   "name": "formula-compiler",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/formula-compiler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha formulaParserTest.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +21,6 @@
   },
   "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
   "dependencies": {
-    "formula-ast": "^2.0.2"
+    "formula-ast": "^2.0.3"
   }
 }
