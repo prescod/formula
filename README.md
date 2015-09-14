@@ -2,7 +2,7 @@
 
 ![circleci](https://circleci.com/gh/FormulaPages/compiler.svg?style=shield&circle-token=:circle-token)
 
-Compile spreadsheet formula syntax to a JavaScript function.
+Compile spreadsheet formulas to JavaScript functions.
 
 ## Install
 
