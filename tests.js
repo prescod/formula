@@ -1,7 +1,7 @@
 var assert = require("assert");
 describe('formulaCompiler', function() {
   describe('#constructor()', function () {
-    var compiler = require('./lib/formula-compiler'),
+    var compiler = require('./COMPILER'),
         compile = compiler.compile;
 
     function run(f) {

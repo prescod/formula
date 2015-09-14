@@ -8,7 +8,7 @@
       exports: {}
     };
     factory(mod.exports, global.formulaAst);
-    global.formulaCompiler = mod.exports;
+    global.COMPILER = mod.exports;
   }
 })(this, function (exports, _formulaAst) {
   // Copyright 2015 Peter W Moresi
