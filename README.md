@@ -38,7 +38,7 @@ You can gain access to the list of precedents:
 
 The identifier:
 
-    myFunciton.id
+    myFunction.id
 
 The abstract syntax tree:
 
