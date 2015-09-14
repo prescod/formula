@@ -3,6 +3,10 @@ describe('formulaCompiler', function() {
   describe('#constructor()', function () {
     var compiler = require('./lib/formula-compiler'),
         compile = compiler.compile;
+
+    function run(f) {
+      return f({}, f.requires);
+    }
     
     it('it should be there when you require it', function () {
       assert( typeof compiler !== undefined, "not there for me");
@@ -12,36 +16,47 @@ describe('formulaCompiler', function() {
       assert( typeof compile !== undefined, "not there for me");
     });
 
-    it('it should run simple comparision', function () {
-      var f = compile('2=2'),
-          requirements = f.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
+    it('it should generate code like...', function() {
 
-      assert(f({}, requirements), '2 should be 2');
-      
+      assert( compile('2=2').code === "requires.EQ(2, 2)", "EQ" );
+      assert( compile('2<>2').code === "requires.NE(2, 2)", "NE" );
+      assert( compile('2>2').code === "requires.GT(2, 2)", "GT" );
+      assert( compile('2>=2').code === "requires.GTE(2, 2)", "GTE" );
+      assert( compile('2<2').code === "requires.LT(2, 2)", "LT" );
+      assert( compile('2<=2').code === "requires.LTE(2, 2)", "LTE" );
+      assert( compile('2^2').code === "requires.POWER(2, 2)", "POWER. " );
+      assert( compile('2+2').code === "requires.ADD(2, 2)", "ADD" );
+      assert( compile('2-2').code === "requires.SUBTRACT(2, 2)", "SUBTRACT" );
+      assert( compile('2*2').code === "requires.MULTIPLY(2, 2)", "MULTIPLY" );
+      assert( compile('2/2').code === "requires.DIVIDE(2, 2)", "DIVIDE" );
+      assert( compile('"2" & "2"').code === "requires.CONCATENATE('2', '2')", "CONCATENATE" );
+
+    });
+
+    it('it should run a simple comparision', function () {
+      var f = compile('2=2');
+      assert(run(f), '2 should be 2');
     });
 
     it('it should run README example', function() {
       var data = { SuccessText: "Works!" };
       var context = { get: function(k) { return data[k]; } };
-      var myFunction = compiler.compile('IF(TRUE, SuccessText, "Broken")');
-      var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
-      var result = myFunction(context, requirements)
+      var myFormula = compiler.compile('IF(TRUE, SuccessText, "Broken")');
+      var result = myFormula(context)
         
       assert(result === "Works!", "Does not work. Result: " + result);
     });
     
     it('it should do basic math', function () {
-      var f = compile('1+1=4-2'),
-          requirements = f.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
+      var f = compile('1+1=4-2');
 
-      assert(f({}, requirements), '1+1=4-2 should be true');
+      assert(run(f), '1+1=4-2 should be true');
       
     });
 
-    it('it should eat arrays', function () {
+    it('it should eat arrays for breakfast', function () {
       var f = compile('{1,1,1;2,2}'),
-          requirements = f.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {}),
-          result = f({}, requirements);
+          result = run(f);
 
       assert(result.length = 2, 'Should have two items.');
       assert(result[0].length = 3, 'First item should have three items.');
