@@ -32,7 +32,7 @@ export function compile(exp, namespace="requires.") {
 
   function pushRequires(require) {
     if (requires.indexOf(require) === -1) {
-      requires.push(require);
+      requires.push('formula-' + require);
     }
   }
   
@@ -205,12 +205,14 @@ export function compile(exp, namespace="requires.") {
   f.ast = ast;
   f.code = compiled;
   f.precedents = precedents;
-  f.requirements = requires;
-  f.requires = requires.reduce( (out, n) => {
-    out[n.toUpperCase()] = require('formula-' + n);
-    return out;
-  }, {} );
-
+  f.requires = requires;
+  f.resolve = function() {
+    return this.requires.reduce( function(out, n) {
+      out[n.substr(8).toUpperCase()] = require(n);
+      return out;
+    }, {} );
+  }
+  
   return f;
   
 }
