@@ -24,9 +24,9 @@ Use the compiler to generate a function.
 
     var myFunction = compiler.compile('IF(TRUE, SuccessText, "Broken")');
 
-Run the function passing back in the requirements.
+Run the function passing back in the requirements by calling resolve().
 
-    var result = myFunction(context, myFunction.requires)
+    var result = myFunction(context, myFunction.resolve())
 
 ## Properties
 
