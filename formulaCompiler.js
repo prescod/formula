@@ -8,7 +8,7 @@
       exports: {}
     };
     factory(mod.exports, global.formulaAst);
-    global.COMPILER = mod.exports;
+    global.formulaCompiler = mod.exports;
   }
 })(this, function (exports, _formulaAst) {
   // Copyright 2015 Peter W Moresi
@@ -52,7 +52,7 @@
 
     function pushRequires(require) {
       if (requires.indexOf(require) === -1) {
-        requires.push(require);
+        requires.push("formula-" + require);
       }
     }
 
@@ -217,11 +217,13 @@
     f.ast = ast;
     f.code = compiled;
     f.precedents = precedents;
-    f.requirements = requires;
-    f.requires = requires.reduce(function (out, n) {
-      out[n.toUpperCase()] = require("formula-" + n);
-      return out;
-    }, {});
+    f.requires = requires;
+    f.resolve = function () {
+      return this.requires.reduce(function (out, n) {
+        out[n.substr(8).toUpperCase()] = require(n);
+        return out;
+      }, {});
+    };
 
     return f;
   }

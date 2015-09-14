@@ -1,11 +1,13 @@
 var assert = require("assert");
 describe('formulaCompiler', function() {
   describe('#constructor()', function () {
-    var compiler = require('./COMPILER'),
+    var compiler = require('./formulaCompiler'),
         compile = compiler.compile;
 
-    function run(f) {
-      return f({}, f.requires);
+    function run(f, c) {
+      // load requirements from libraries.
+      var requires = f.resolve();
+      return f(c, requires );
     }
     
     it('it should be there when you require it', function () {

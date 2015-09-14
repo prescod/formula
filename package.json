@@ -1,8 +1,8 @@
 {
   "name": "formula-compiler",
-  "version": "1.0.11",
+  "version": "1.1.0",
   "description": "Compile spreadsheet formula to JavaScript.",
-  "main": "COMPILER.js",
+  "main": "formulaCompiler.js",
   "scripts": {
     "test": "mocha tests.js"
   },
