@@ -1,6 +1,6 @@
 # Formula Compiler
 
-![circleci](https://circleci.com/gh/FormulaPages/compiler.svg?style=shield&circle-token=:circle-token)
+![circleci](https://circleci.com/gh/FormulaPages/formula-compiler.svg?style=shield&circle-token=:circle-token)
 
 Compile spreadsheet formulas to JavaScript functions.
 
