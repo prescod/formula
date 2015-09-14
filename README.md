@@ -30,11 +30,7 @@ Run the function passing back in the requirements.
 
 ## Properties
 
-The function has properties with metadata.
-
-You can gain access to the list of precedents:
-
-    myFunction.precedents
+The function comes with metadata.
 
 The identifier:
 
@@ -44,10 +40,10 @@ The abstract syntax tree:
 
     myFunction.ast
 
-The list of required function names:
-
-    myFunction.requirements
-
-Or an array of the required functions (used to run it):
+The list of required libraries:
 
     myFunction.requires
+
+The list of precedents:
+
+    myFunction.precedents
