@@ -5,12 +5,12 @@ function wrapString(s) {
   if (s[0] == "'" && s[s.length-1] === "'") {
     return s;
   }
-  return 'String(' + s + '.valueOf())';
+  return '\'' + s + '\'';
 }
 
 var compiledNumber = 0;
 
-export function compile(exp, mode=1, namespace="requires.", useContext) {
+export function compile(exp, namespace="requires.") {
   var ast = exp,
       jsCode,
       functionCode,
@@ -51,23 +51,23 @@ export function compile(exp, mode=1, namespace="requires.", useContext) {
             return '-' + compiler( node.operands[0] );
           case 'infix-add':
             pushRequires('add');
-            return namespace + "ADD(" + compiler( node.operands[0] ) + ',' +
+            return namespace + "ADD(" + compiler( node.operands[0] ) + ', ' +
                    compiler( node.operands[1]) + ")";
           case 'infix-subtract':
             pushRequires('subtract');
-            return (namespace + "SUBTRACT(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "SUBTRACT(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");
           case 'infix-multiply':
             pushRequires('multiply');
-            return (namespace + "MULTIPLY(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "MULTIPLY(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");
           case 'infix-divide':
             pushRequires('divide');
-            return (namespace + "DIVIDE(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "DIVIDE(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");
           case 'infix-power':
             pushRequires('power');
-            return (namespace + 'POWER(' + compiler( node.operands[0] ) + ',' 
+            return (namespace + 'POWER(' + compiler( node.operands[0] ) + ', ' 
                   + compiler( node.operands[1] ) + ')');
           case 'infix-concat':
             lhs = compiler( node.operands[0] );
@@ -76,27 +76,27 @@ export function compile(exp, mode=1, namespace="requires.", useContext) {
             return namespace + "CONCATENATE(" + wrapString(lhs) + ', ' + wrapString(rhs) + ")";
           case 'infix-eq':
             pushRequires('eq');
-            return (namespace + "EQ(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "EQ(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                
           case 'infix-ne':
             pushRequires('ne');
-            return (namespace + "NE(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "NE(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                                
           case 'infix-gt':
             pushRequires('gt');
-            return (namespace + "GT(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "GT(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                                
           case 'infix-gte':
             pushRequires('gte');
-            return (namespace + "GTE(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "GTE(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                                
           case 'infix-lt':
             pushRequires('lt');
-            return (namespace + "LT(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "LT(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                                
           case 'infix-lte':
             pushRequires('lte');
-            return (namespace + "LTE(" + compiler( node.operands[0] ) + ',' +
+            return (namespace + "LTE(" + compiler( node.operands[0] ) + ', ' +
                     compiler( node.operands[1]) + ")");                
         }
         throw TypeException("Unknown operator: " + node.subtype);
@@ -191,35 +191,26 @@ export function compile(exp, mode=1, namespace="requires.", useContext) {
   }
   
   
-  jsCode = compiler(ast);
+  var id = compiledNumber++;
+
+  var compiled = compiler(ast);
+  var code = '// formula: ' + exp + '\n' +
+             'return (' + compiled + ');' + '\n' +
+             '//@ sourceURL=formula_function_' + id +  '.js';
   
-  switch(mode) {
-    case 1:
-      var id = compiledNumber++;
-      
-      f = Function("context", "requires",
-                   "return " + jsCode +
-                   "\n//@ sourceURL=formula_function_" + id +
-                   ".js"  + '// formula: ' + exp);
-      
-      f.id = id;
-      f.exp = exp;
-      f.ast = ast;
-      f.requires = requires;
-      f.precedents = precedents;
-      
-      return f;
-    case 2:
-      return jsCode;
-    case 3:
+  f = Function('context', 'requires', code);
+  
+  f.id = id;
+  f.exp = exp;
+  f.ast = ast;
+  f.code = compiled;
+  f.precedents = precedents;
+  f.requirements = requires;
+  f.requires = requires.reduce( (out, n) => {
+    out[n.toUpperCase()] = require('formula-' + n);
+    return out;
+  }, {} );
 
-      return ('// formula: ' + exp + '\nfunction( context, requires) { \n  return ' +
-              jsCode + ';\n}');
-    case 4:
-      return precedents;
-    case 5:
-      return requires;
-
-  }
+  return f;
   
 }

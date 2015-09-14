@@ -13,11 +13,3 @@ Compile spreadsheet formula syntax to a JavaScript function.
     var requirements = myFunction.requires.reduce(function(out, n) { out[n.toUpperCase()] = require('formula-' + n); return out; }, {});
     var result = myFunction(context, requirements)
     console.log(myFunction({ SucessText: 'Works!'}, requirements));
-
-The compiler supports modes:
-
-1. Compile function (default)
-2. Code
-3. Code wrapped in function
-4. List of precedents
-5. List of requirements (functions used by formula)
