@@ -5,20 +5,6 @@
     <title>Formula Compiler Demo</title>
     <script src="http://formulapages.github.io/parser/formulaParser.js"></script>
     <script src="formulaCompiler.js"></script>
-    <script>
-      var data = { "message": "Hello, World" };
-      var context = { get: function(k) { return data[k]; }}
-      var last;
-      function runFN(text) {
-        try {
-          window.result.textContent = formulaCompiler.compile(text)(context);
-          window.formulaError.textContent = '';
-          last = text;
-        } catch(e) {
-          window.formulaError.textContent = e.message;
-        }
-      }
-    </script>
   </head>
   <body>
     <h1>Context Data</h1>
@@ -31,7 +17,22 @@
     <div id="result">
     </div>
     <script>
-    runFN('message')
+      onload = function() {
+
+      var data = { "message": "Hello, World" };
+      var context = { get: function(k) { return data[k]; }}
+      var last;
+      function runFN(text) {
+        try {
+          window.result.textContent = formulaCompiler.compile(text)(context);
+          window.formulaError.textContent = '';
+          last = text;
+        } catch(e) {
+          window.formulaError.textContent = e.message;
+        }
+      }
+      runFN('message');
+      }()
     </script>
   </body>
 </html>
