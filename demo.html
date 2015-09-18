@@ -19,9 +19,10 @@
     <script>
       var data = { "message": "Hello, World" };
       var context = { get: function(k) { return data[k]; }}
+      var last;
 
       function runFN(text) {
-        var last = text;
+        last = text;
         try {
           window.result.textContent = formulaCompiler.compile(text)(context);
           window.formulaError.textContent = '';
