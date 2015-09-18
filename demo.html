@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Formula Compiler Demo</title>
+    <script src="../parser/formulaParser.js"></script>
+    <script src="formulaCompiler.js"></script>
+    <script>
+      var data = { "message": "Hello, World" };
+      var context = { get: function(k) { return data[k]; }}
+      var last;
+      function runFN(text) {
+        try {
+          window.result.textContent = formulaCompiler.compile(text)(context);
+          window.formulaError.textContent = '';
+          last = text;
+        } catch(e) {
+          window.formulaError.textContent = e.message;
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Context Data</h1>
+    <textarea id="data" rows="3" cols="80" onkeyup="try{ data=JSON.parse(this.value); runFN(last); window.dataError.textContent = ''; } catch(e) { window.dataError.textContent = e.message; }">{ "success": true, "message": "Hello, World", "errorMessage": "Something when wrong" }</textarea>
+    <div id="dataError"></div>
+    <h1>Formula</h1>
+    <textarea id="formula" rows="3" cols="80" onkeyup="runFN(this.value)">IF( success, message, errorMessage)</textarea>
+    <div id="formulaError"></div>
+    <h1>Result</h1>
+    <div id="result">
+    </div>
+    <script>
+    runFN('message')
+    </script>
+  </body>
+</html>
