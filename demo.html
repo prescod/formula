@@ -17,11 +17,6 @@
     <div id="result">
     </div>
     <script>
-      onload = function() {
-
-      var data = { "message": "Hello, World" };
-      var context = { get: function(k) { return data[k]; }}
-      var last;
       function runFN(text) {
         try {
           window.result.textContent = formulaCompiler.compile(text)(context);
@@ -31,8 +26,14 @@
           window.formulaError.textContent = e.message;
         }
       }
-      runFN('message');
-      }()
+
+      onload = function() {
+        var data = { "message": "Hello, World" };
+        var context = { get: function(k) { return data[k]; }}
+        var last;
+        runFN('message');
+      }();
+      
     </script>
   </body>
 </html>
