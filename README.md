@@ -1,18 +1,18 @@
-# Formula Compiler
+# FormulaFoundry
 
-![circleci](https://circleci.com/gh/FormulaPages/formula-compiler.svg?style=shield&circle-token=:circle-token)
+![circleci](https://circleci.com/gh/FunctionFoundry/formulafoundry.svg?style=shield&circle-token=:circle-token)
 
 Compile formulas to JavaScript functions. See [docs](./Formulas.org) for formula syntax.
 
 ## Install
 
-    npm install formula-compiler
+    npm install --save formulafoundry
 
 ## Usage
 
 1. Require the compiler.
 
-    var compiler = require('formula-compiler');
+    var compiler = require('formulafoundry');
 
 Then you need a data object and a context that supports
 a `get` function.
