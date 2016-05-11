@@ -2,7 +2,7 @@
 
 ![circleci](https://circleci.com/gh/FormulaPages/formula-compiler.svg?style=shield&circle-token=:circle-token)
 
-Compile spreadsheet formulas to JavaScript functions.
+Compile formulas to JavaScript functions. See [docs](./Formulas.org) for formula syntax.
 
 ## Install
 
@@ -10,7 +10,7 @@ Compile spreadsheet formulas to JavaScript functions.
 
 ## Usage
 
-First you must require the compiler.
+1. Require the compiler.
 
     var compiler = require('formula-compiler');
 

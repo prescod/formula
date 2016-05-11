@@ -1,9 +1,10 @@
 {
-  "name": "formula-compiler",
-  "version": "1.1.0",
+  "name": "formulafoundry",
+  "version": "0.0.1",
   "description": "Compile spreadsheet formula to JavaScript.",
-  "main": "formulaCompiler.js",
+  "main": "compiler.js",
   "scripts": {
+    "build": "babel compiler.es6 -m commonjs --out-file compiler.js",
     "test": "mocha tests.js"
   },
   "repository": {
@@ -21,22 +22,13 @@
   },
   "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
   "dependencies": {
-    "formula-add": "^1.0.0",
-    "formula-ast": "^2.0.3",
-    "formula-concatenate": "^1.0.0",
-    "formula-divide": "^1.0.0",
-    "formula-eq": "^1.0.0",
-    "formula-gt": "^1.0.0",
-    "formula-gte": "^1.0.0",
-    "formula-if": "^1.0.0",
-    "formula-lt": "^1.0.0",
-    "formula-lte": "^1.0.0",
-    "formula-multiply": "^1.0.0",
-    "formula-ne": "^1.0.0",
-    "formula-power": "^1.0.0",
-    "formula-subtract": "^1.0.0"
+    "functionfoundry": "^0.9.11"
   },
   "devDependencies": {
-    "babel": "^5.8.23"
+    "babel-cli": "^6.1.2",
+    "babel-core": "^6.1.2",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.1.3",
+    "babel-preset-es2015": "^6.1.2",
+    "jison": "^0.4.17"
   }
 }
