@@ -3,38 +3,46 @@
   <head>
     <meta charset="utf-8">
     <title>Formula Compiler Demo</title>
-    <script src="https://functionfoundry.github.io/formulafoundry/dist/formulafoundry.js"></script>
+    <script src="/dist/formulafoundry.js"></script>
   </head>
   <body>
-    <h1>Context Data</h1>
-    <textarea id="data" rows="3" cols="80" onkeyup="try{ data=JSON.parse(this.value); runFN(last); window.dataError.textContent = ''; } catch(e) { window.dataError.textContent = e.message; }">
-      { "success": true, "message": "Hello, World", "errorMessage": "Something when wrong" }
+    <h1>Context</h1>
+    <textarea id="data" rows="5" cols="80" onkeyup="try{ data=JSON.parse(this.value); runFN(code); window.dataError.textContent = ''; } catch(e) { window.dataError.textContent = e.message; }">
     </textarea>
     <div id="dataError"></div>
+
     <h1>Formula</h1>
-    <textarea id="formula" rows="3" cols="80" onkeyup="runFN(this.value)">IF( success, message, errorMessage)</textarea>
+    <textarea id="formula" rows="2" cols="80" onkeyup="runFN(this.value)">
+    </textarea>
+
     <div id="formulaError"></div>
     <h1>Result</h1>
-    <div id="result">
-    </div>
-    <script>
-      var data = { "message": "Hello, World" };
-      var context = { get: function(k) { return data[k]; }}
-      var last;
+    <div id="result"></div>
+
+    <h1>JS Code</h1>
+    <div id="code"></div>
+
+    <script defer>
+      var data = { "a": 1, b: 2};
+      var code = 'if( a+1 < 3, "Yes", "No")'
 
       function runFN(text) {
-        last = text;
+
+        document.getElementById('data').textContent = JSON.stringify(data, null, 4)
+
         try {
-          window.result.textContent = FormulaFoundry.run(text, context);
-          window.formulaError.textContent = '';
-          last = text;
+          window.result.textContent = FormulaFoundry.run(text, data);
+          document.getElementById('code').textContent = FormulaFoundry.compile(text, data).code
+          document.getElementById('formulaError').textContent = '';
+          code = text;
         } catch(e) {
           window.formulaError.textContent = e.message;
         }
       }
 
-      onload = function() {
-        runFN('message');
+      window.load = function() {
+        document.getElementById('formula').textContent = code
+        runFN(code);
       }();
 
     </script>
