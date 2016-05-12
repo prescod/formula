@@ -109,43 +109,8 @@ function compile(exp) {
       case 'group':
         return '(' + compiler(node.exp) + ')';
       case 'function':
-        switch (node.name.toUpperCase()) {
-          case 'IF':
-            requires.push('if');
-            if (node.args.length > 3) {
-              throw Error("IF sent too many arguments.");
-            }
-            if (node.args.length !== 3) {
-              throw Error("IF expects 3 arguments");
-            }
-            return '((' + compiler(node.args[0]) + ') ?' + compiler(node.args[1]) + ' : ' + compiler(node.args[2]) + ')';
-
-          case 'NOT':
-            requires.push('not');
-            if (node.args.length !== 1) {
-              throw Error("NOT only accepts one argument");
-            }
-            return namespace + "NOT(' + compiler( node.args[0] ) + ')";
-          case 'AND':
-            requires.push('and');
-            return namespace + 'AND(' + printItems(node.args) + ')';
-          case 'OR':
-            requires.push('or');
-            return namespace + 'OR(' + printItems(node.args) + ')';
-          case 'ABS':
-            requires.push('abs');
-            return 'ABS(' + compiler(node) + ')';
-          case 'MIN':
-            requires.push('min');
-            return 'Math.min(' + printItems(node.args) + ')';
-          case 'MAX':
-            requires.push('max');
-            return 'Math.max(' + printItems(node.args) + ')';
-          default:
-            requires.push(node.name);
-            return namespace + node.name + '( ' + printItems(node.args) + ' )';
-
-        }
+        requires.push(node.name.toUpperCase());
+        return namespace + node.name.toUpperCase() + '( ' + printItems(node.args) + ' )';
       case 'cell':
         if (typeof precedents !== "undefined" && !suppress) {
           precedents.push(node);
@@ -911,74 +876,82 @@ case 2:return 26
 break;
 case 3:return 27
 break;
-case 4:return 9
+case 4:return 26
 break;
-case 5:return 10
+case 5:return 27
 break;
-case 6:return 8
+case 6:return 26
 break;
-case 7:return 7
+case 7:return 27
 break;
-case 8:return 17
+case 8:return 9
 break;
-case 9:return 11
+case 9:return 10
 break;
-case 10:return 18
+case 10:return 8
 break;
-case 11:return 19
+case 11:return 7
 break;
-case 12:return ">="
+case 12:return 17
 break;
-case 13:return "<="
+case 13:return 11
 break;
-case 14:return "<>"
+case 14:return 18
 break;
-case 15:return "="
+case 15:return 19
 break;
-case 16:return ">"
+case 16:return ">="
 break;
-case 17:return "<"
+case 17:return "<="
 break;
-case 18:return "{"
+case 18:return "<>"
 break;
-case 19:return "}"
+case 19:return "="
 break;
-case 20:return "!"
+case 20:return ">"
 break;
-case 21:return ","
+case 21:return "<"
 break;
-case 22:return ":"
+case 22:return "{"
 break;
-case 23:return ";"
+case 23:return "}"
 break;
-case 24:return "%"
+case 24:return "!"
 break;
-case 25:return 35;
+case 25:return ","
 break;
-case 26:return 35;
+case 26:return ":"
 break;
-case 27:yy_.yytext = yy_.yytext.substr(2,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
+case 27:return ";"
 break;
-case 28:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
+case 28:return "%"
 break;
-case 29:yy_.yytext = yy_.yytext.slice(0, -1); return "SHEET"
+case 29:return 35;
 break;
-case 30:yy_.yytext = yy_.yytext.slice(1, -1); return "SHEET"
+case 30:return 35;
 break;
-case 31:return "CELL";
+case 31:yy_.yytext = yy_.yytext.substr(2,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
 break;
-case 32:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-2).replace(/\"\"/g, "\""); return "STRING";
+case 32:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
 break;
-case 33:return 23
+case 33:yy_.yytext = yy_.yytext.slice(0, -1); return "SHEET"
 break;
-case 34:return 5
+case 34:yy_.yytext = yy_.yytext.slice(1, -1); return "SHEET"
 break;
-case 35:return 'INVALID'
+case 35:return "CELL";
+break;
+case 36:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-2).replace(/\"\"/g, "\""); return "STRING";
+break;
+case 37:return 23
+break;
+case 38:return 5
+break;
+case 39:return 'INVALID'
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:[0-9]+(\.[0-9]+)?\b)/,/^(?:TRUE\b)/,/^(?:FALSE\b)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:&)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>=)/,/^(?:<=)/,/^(?:<>)/,/^(?:=)/,/^(?:>)/,/^(?:<)/,/^(?:\{)/,/^(?:\})/,/^(?:!)/,/^(?:,)/,/^(?::)/,/^(?:;)/,/^(?:%)/,/^(?:[A-Za-z](?=[(]))/,/^(?:[A-Za-z][A-Za-z0-9\.]+(?=[(]))/,/^(?:\$'(?:''|[^'])*'!)/,/^(?:'(?:''|[^'])*'!)/,/^(?:[a-zA-Z]([a-zA-Z0-9.$]+)?!)/,/^(?:\$([a-zA-Z])([a-zA-Z0-9.$]+)?!)/,/^(?:\$?([a-zA-Z]+)\$?([0-9]+))/,/^(?:"(?:""|[^"])*")/,/^(?:[a-zA-Z]([a-zA-Z0-9.$^\(]+)?)/,/^(?:$)/,/^(?:.)/],
-conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35],"inclusive":true}}
+rules: [/^(?:\s+)/,/^(?:[0-9]+(\.[0-9]+)?\b)/,/^(?:TRUE\b)/,/^(?:FALSE\b)/,/^(?:true\b)/,/^(?:false\b)/,/^(?:True\b)/,/^(?:False\b)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:&)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>=)/,/^(?:<=)/,/^(?:<>)/,/^(?:=)/,/^(?:>)/,/^(?:<)/,/^(?:\{)/,/^(?:\})/,/^(?:!)/,/^(?:,)/,/^(?::)/,/^(?:;)/,/^(?:%)/,/^(?:[A-Za-z](?=[(]))/,/^(?:[A-Za-z][A-Za-z0-9\.]+(?=[(]))/,/^(?:\$'(?:''|[^'])*'!)/,/^(?:'(?:''|[^'])*'!)/,/^(?:[a-zA-Z]([a-zA-Z0-9.$]+)?!)/,/^(?:\$([a-zA-Z])([a-zA-Z0-9.$]+)?!)/,/^(?:\$?([a-zA-Z]+)\$?([0-9]+))/,/^(?:"(?:""|[^"])*")/,/^(?:[a-zA-Z]([a-zA-Z0-9.$^\(]+)?)/,/^(?:$)/,/^(?:.)/],
+conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"inclusive":true}}
 });
 return lexer;
 })();
