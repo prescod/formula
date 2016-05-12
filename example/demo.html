@@ -3,12 +3,13 @@
   <head>
     <meta charset="utf-8">
     <title>Formula Compiler Demo</title>
-    <script src="http://formulapages.github.io/parser/formulaParser.js"></script>
-    <script src="formulaCompiler.js"></script>
+    <script src="http://formulapages.github.io/formulafoundry/dist/formulafoundry.js"></script>
   </head>
   <body>
     <h1>Context Data</h1>
-    <textarea id="data" rows="3" cols="80" onkeyup="try{ data=JSON.parse(this.value); runFN(last); window.dataError.textContent = ''; } catch(e) { window.dataError.textContent = e.message; }">{ "success": true, "message": "Hello, World", "errorMessage": "Something when wrong" }</textarea>
+    <textarea id="data" rows="3" cols="80" onkeyup="try{ data=JSON.parse(this.value); runFN(last); window.dataError.textContent = ''; } catch(e) { window.dataError.textContent = e.message; }">
+      { "success": true, "message": "Hello, World", "errorMessage": "Something when wrong" }
+    </textarea>
     <div id="dataError"></div>
     <h1>Formula</h1>
     <textarea id="formula" rows="3" cols="80" onkeyup="runFN(this.value)">IF( success, message, errorMessage)</textarea>
@@ -24,7 +25,7 @@
       function runFN(text) {
         last = text;
         try {
-          window.result.textContent = formulaCompiler.compile(text)(context);
+          window.result.textContent = FormulaFoundry.run(text, context);
           window.formulaError.textContent = '';
           last = text;
         } catch(e) {
@@ -35,7 +36,7 @@
       onload = function() {
         runFN('message');
       }();
-      
+
     </script>
   </body>
 </html>
