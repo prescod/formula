@@ -3,22 +3,9 @@
 import {parser} from './parser'
 import * as FF from 'functionfoundry'
 
-function wrapString(s) {
-  if (s[0] == "'" && s[s.length-1] === "'") {
-    return s;
-  }
-  return '\'' + s + '\'';
-}
-
-function printItems(items) {
-  return items.map(function(n){
-    return compiler( n );
-  }).join(', ')
-}
-
 var compiledNumber = 0;
 
-export default function compiler(exp) {
+export function compile(exp) {
   var ast = exp,
       jsCode,
       functionCode,
@@ -26,11 +13,24 @@ export default function compiler(exp) {
       suppress = false,
       precedents = [],
       requires = [],
-      namespace='requires.';
+      namespace='this.';
 
   // convert to AST when string provided
   if (typeof ast === 'string') {
     ast = parser.parse(exp);
+  }
+
+  function wrapString(s) {
+    if (s[0] == "'" && s[s.length-1] === "'") {
+      return s;
+    }
+    return '\'' + s + '\'';
+  }
+
+  function printItems(items) {
+    return items.map(function(n){
+      return compiler( n );
+    }).join(', ')
   }
 
   // define a compiler function to handle recurse the AST.
@@ -131,7 +131,7 @@ export default function compiler(exp) {
             requires.push('max');
             return 'Math.max(' + printItems(node.args) + ')';
           default:
-            requires.push(name);
+            requires.push(node.name);
             return (namespace + node.name + '( ' + printItems(node.args) + ' )');
 
         }
@@ -190,14 +190,28 @@ export default function compiler(exp) {
   f.ast = ast;
   f.code = compiled;
   f.precedents = precedents;
-  f.requires = requires
-  .map(n => n.toUpperCase())
-  .reduce( function(out, name) {
-    out[name] = FF[name];
-    return out;
-  }, {} );
-  f.run = (context) => f.bind(requires)(context)
+  f.requires = requires;
 
   return f
 
+}
+
+export function run(exp, locals={}, requires) {
+  var compiled = compile(exp);
+  var requirements = requires;
+  //
+  if (typeof requires === 'undefined') {
+    requirements = compiled.requires.map(n => n.toUpperCase())
+      .reduce( function(out, name) {
+        out[name] = FF[name];
+        return out;
+      }, {} );
+  }
+
+  // if object without get method
+  if (locals.get !== 'function') {
+    locals.get = (propName) => locals[propName]
+  }
+
+  return compiled.bind(requirements)(locals)
 }
