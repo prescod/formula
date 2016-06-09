@@ -50,7 +50,7 @@ frac                        (?:\.[0-9]+)
 \$([a-zA-Z])([a-zA-Z0-9.$]+)?\!  yytext = yytext.slice(1, -1); return "SHEET"
 \$?([a-zA-Z]+)\$?([0-9]+)                              return "CELL";
 \"(?:\"\"|[^"])*\"    yytext = yytext.substr(1,yyleng-2).replace(/\"\"/g, "\""); return "STRING";
-[a-zA-Z]([a-zA-Z0-9.$^\(]+)?  return 'IDENT'
+[a-zA-Z]([\[\]a-zA-Z0-9.$^\(]+)?  return 'IDENT'
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
 
