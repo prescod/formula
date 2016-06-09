@@ -1,6 +1,6 @@
 {
   "name": "formulafoundry",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publishConfig": {
     "tag": "next"
   },
@@ -11,7 +11,7 @@
     "build:parser": "jison src/parser.jison -m commonjs -o lib/parser.js",
     "build:dist": "browserify ./browserify.js > dist/formulafoundry.js && browserify -g uglifyify ./browserify.js > dist/formulafoundry.min.js",
     "build": "npm run build:parser && npm run build:compiler && npm run build:dist",
-    "test": "babel-tape-runner tests/*.js"
+    "test": "tape tests/*.js"
   },
   "repository": {
     "type": "git",

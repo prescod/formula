@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>Formula Compiler Demo</title>
-    <script src="https://functionfoundry.github.io/formulafoundry/dist/formulafoundry.js"></script>
+    <script src="/dist/formulafoundry.js"></script>
   </head>
   <body>
     <h1>Context</h1>
@@ -25,14 +25,16 @@
     <script defer>
       var data = { "a": 1, b: 2};
       var code = 'if( a+1 < 3, "Yes", "No")'
+      var funcs = {}
 
       function runFN(text) {
 
         document.getElementById('data').textContent = JSON.stringify(data, null, 4)
-
         try {
-          window.result.textContent = FormulaFoundry.run(text, data);
-          document.getElementById('code').textContent = FormulaFoundry.compile(text, data).code
+          var f = funcs[text] ? funcs[text] : FormulaFoundry.compile(text, data)
+          funcs[text] = f
+          window.result.textContent = FormulaFoundry.run(f, data);
+          document.getElementById('code').textContent = f.code
           document.getElementById('formulaError').textContent = '';
           code = text;
         } catch(e) {
