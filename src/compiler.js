@@ -27,6 +27,12 @@ export function compile(exp) {
     return '\'' + s + '\'';
   }
 
+  function printFuncs(items) {
+    return items.map(function(n){
+      return 'function() { return (' + compiler( n ) + ') }.bind(this)';
+    }).join(', ')
+  }
+
   function printItems(items) {
     return items.map(function(n){
       return compiler( n );
@@ -87,8 +93,16 @@ export function compile(exp) {
       case 'group':
         return ('(' +  compiler( node.exp ) + ')');
       case 'function':
-          requires.push(node.name.toLowerCase());
-          return (namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )');
+      requires.push(node.name.toLowerCase() === 'if' ? 'branch' : node.name.toLowerCase());
+      switch(node.name) {
+        case 'if':
+        return (namespace + 'branch( ' + printFuncs(node.args) + ' )');
+        case 'and':
+        case 'or':
+        return (namespace + node.name.toLowerCase() + '( ' + printFuncs(node.args) + ' )');
+        default:
+        return (namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )');
+      }
       case 'cell':
         if (typeof precedents !== "undefined" && !suppress) { precedents.push(node); }
 
@@ -110,7 +124,8 @@ export function compile(exp) {
           rhs = "function() { return (" + rhs + "); }"
         }
 
-        return ('context.range( ' + lhs + ', ' + rhs + ' )' );
+        requires.push('ref');
+        return ('this.ref( ' + lhs + ', ' + rhs + ' )' );
 
       case 'value':
         switch (node.subtype) {
@@ -134,10 +149,12 @@ export function compile(exp) {
 
   var compiled = compiler(ast);
 
-  f = new Function('context', `// ${exp}
-  return (${compiled});
-  //@ sourceURL=formula_function_${id}.js'
-  `);
+  f = new Function('context',
+`/* formula: ${exp} */
+return (${compiled});
+//# sourceURL=formulafoundry_${id}
+`
+  );
 
   f.id = id;
   f.exp = exp;
@@ -146,16 +163,18 @@ export function compile(exp) {
   f.precedents = precedents;
   f.requires = requires;
 
+  console.log(f)
+
   return f
 
 }
 
 export function run(exp, locals={}, requires) {
-  var compiled = compile(exp);
-  var requirements = requires;
+  var compiled = FF.isfunction(exp) ? exp : compile(exp);
+  var r = requires;
 
   if (typeof requires === 'undefined') {
-    requirements = compiled.requires
+    r = compiled.requires
       .reduce( function(out, name) {
         out[name] = FF[name];
         return out;
@@ -167,7 +186,5 @@ export function run(exp, locals={}, requires) {
     locals.get = (propName) => locals[propName]
   }
 
-  console.log(compiled.requires, requirements)
-
-  return compiled.bind(requirements)(locals)
+  return compiled.bind(r)(locals)
 }

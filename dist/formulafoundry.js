@@ -46,6 +46,12 @@ function compile(exp) {
     return '\'' + s + '\'';
   }
 
+  function printFuncs(items) {
+    return items.map(function (n) {
+      return 'function() { return (' + compiler(n) + ') }.bind(this)';
+    }).join(', ');
+  }
+
   function printItems(items) {
     return items.map(function (n) {
       return compiler(n);
@@ -107,8 +113,16 @@ function compile(exp) {
       case 'group':
         return '(' + compiler(node.exp) + ')';
       case 'function':
-        requires.push(node.name.toLowerCase());
-        return namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )';
+        requires.push(node.name.toLowerCase() === 'if' ? 'branch' : node.name.toLowerCase());
+        switch (node.name) {
+          case 'if':
+            return namespace + 'branch( ' + printFuncs(node.args) + ' )';
+          case 'and':
+          case 'or':
+            return namespace + node.name.toLowerCase() + '( ' + printFuncs(node.args) + ' )';
+          default:
+            return namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )';
+        }
       case 'cell':
         if (typeof precedents !== "undefined" && !suppress) {
           precedents.push(node);
@@ -134,7 +148,8 @@ function compile(exp) {
           rhs = "function() { return (" + rhs + "); }";
         }
 
-        return 'context.range( ' + lhs + ', ' + rhs + ' )';
+        requires.push('ref');
+        return 'this.ref( ' + lhs + ', ' + rhs + ' )';
 
       case 'value':
         switch (node.subtype) {
@@ -160,7 +175,7 @@ function compile(exp) {
 
   var compiled = compiler(ast);
 
-  f = new Function('context', '// ' + exp + '\n  return (' + compiled + ');\n  //@ sourceURL=formula_function_' + id + '.js\'\n  ');
+  f = new Function('context', '/* formula: ' + exp + ' */\nreturn (' + compiled + ');\n//# sourceURL=formulafoundry_' + id + '\n');
 
   f.id = id;
   f.exp = exp;
@@ -169,6 +184,8 @@ function compile(exp) {
   f.precedents = precedents;
   f.requires = requires;
 
+  console.log(f);
+
   return f;
 }
 
@@ -176,11 +193,11 @@ function run(exp) {
   var locals = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
   var requires = arguments[2];
 
-  var compiled = compile(exp);
-  var requirements = requires;
+  var compiled = FF.isfunction(exp) ? exp : compile(exp);
+  var r = requires;
 
   if (typeof requires === 'undefined') {
-    requirements = compiled.requires.reduce(function (out, name) {
+    r = compiled.requires.reduce(function (out, name) {
       out[name] = FF[name];
       return out;
     }, {});
@@ -193,9 +210,7 @@ function run(exp) {
     };
   }
 
-  console.log(compiled.requires, requirements);
-
-  return compiled.bind(requirements)(locals);
+  return compiled.bind(r)(locals);
 }
 
 },{"./parser":3,"functionfoundry":5}],3:[function(require,module,exports){
