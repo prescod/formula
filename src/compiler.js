@@ -43,65 +43,52 @@ export function compile(exp) {
       case 'operator':
         switch(node.subtype) {
           case 'prefix-plus':
-            return '+' + compiler( node.operands[0] );
+            return namespace + "numbervalue(" + printItems(node.operands) + ")";
           case 'prefix-minus':
-            return '-' + compiler( node.operands[0] );
+            return namespace + "-numbervalue(" + printItems(node.operands) + ")";
           case 'infix-add':
             requires.push('add');
-            return namespace + "ADD(" + compiler( node.operands[0] ) + ', ' +
-                   compiler( node.operands[1]) + ")";
+            return namespace + "add(" + printItems(node.operands) + ")";
           case 'infix-subtract':
             requires.push('subtract');
-            return (namespace + "SUBTRACT(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "subtract(" + printItems(node.operands) + ")");
           case 'infix-multiply':
             requires.push('multiply');
-            return (namespace + "MULTIPLY(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "multiply(" + printItems(node.operands) + ")");
           case 'infix-divide':
             requires.push('divide');
-            return (namespace + "DIVIDE(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "divide(" + printItems(node.operands) + ")");
           case 'infix-power':
             requires.push('power');
-            return (namespace + 'POWER(' + compiler( node.operands[0] ) + ', '
-                  + compiler( node.operands[1] ) + ')');
+            return (namespace + 'power(' + printItems(node.operands) + ')');
           case 'infix-concat':
-            lhs = compiler( node.operands[0] );
-            rhs = compiler( node.operands[1] );
             requires.push('concatenate');
-            return namespace + "CONCATENATE(" + wrapString(lhs) + ', ' + wrapString(rhs) + ")";
+            return namespace + "concatenate(" + printItems(node.operands) + ")";
           case 'infix-eq':
             requires.push('eq');
-            return (namespace + "EQ(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "eq(" + printItems(node.operands) + ")");
           case 'infix-ne':
             requires.push('ne');
-            return (namespace + "NE(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "ne(" + printItems(node.operands) + ")");
           case 'infix-gt':
             requires.push('gt');
-            return (namespace + "GT(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "gt(" + printItems(node.operands) + ")");
           case 'infix-gte':
             requires.push('gte');
-            return (namespace + "GTE(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "gte(" + printItems(node.operands) + ")");
           case 'infix-lt':
             requires.push('lt');
-            return (namespace + "LT(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "lt(" + printItems(node.operands) + ")");
           case 'infix-lte':
             requires.push('lte');
-            return (namespace + "LTE(" + compiler( node.operands[0] ) + ', ' +
-                    compiler( node.operands[1]) + ")");
+            return (namespace + "lte(" + printItems(node.operands) + ")");
         }
         throw TypeException("Unknown operator: " + node.subtype);
       case 'group':
         return ('(' +  compiler( node.exp ) + ')');
       case 'function':
-          requires.push(node.name.toUpperCase());
-          return (namespace + node.name.toUpperCase() + '( ' + printItems(node.args) + ' )');
+          requires.push(node.name.toLowerCase());
+          return (namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )');
       case 'cell':
         if (typeof precedents !== "undefined" && !suppress) { precedents.push(node); }
 
@@ -166,9 +153,9 @@ export function compile(exp) {
 export function run(exp, locals={}, requires) {
   var compiled = compile(exp);
   var requirements = requires;
-  //
+
   if (typeof requires === 'undefined') {
-    requirements = compiled.requires.map(n => n.toUpperCase())
+    requirements = compiled.requires
       .reduce( function(out, name) {
         out[name] = FF[name];
         return out;
@@ -179,6 +166,8 @@ export function run(exp, locals={}, requires) {
   if (locals.get !== 'function') {
     locals.get = (propName) => locals[propName]
   }
+
+  console.log(compiled.requires, requirements)
 
   return compiled.bind(requirements)(locals)
 }

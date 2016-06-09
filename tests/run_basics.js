@@ -16,7 +16,7 @@ test('running functions should work', function(t) {
 
   t.plan(2)
   t.equal( run('NUMBERVALUE("2")'), 2 )
-  t.equal( run('NUMBERVALUE("2,000,000.00")'), 2000000 )
+  t.equal( run('numbervalue("2,000,000.00")'), 2000000 )
 
 })
 

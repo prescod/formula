@@ -1,8 +1,11 @@
 {
   "name": "formulafoundry",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "publishConfig": {
+    "tag": "next"
+  },
   "description": "Compile spreadsheet formula to JavaScript.",
-  "main": "compiler.js",
+  "main": "lib/compiler.js",
   "scripts": {
     "build:compiler": "babel src/compiler.js -m commonjs --out-file lib/compiler.js",
     "build:parser": "jison src/parser.jison -m commonjs -o lib/parser.js",
@@ -26,7 +29,7 @@
   "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
   "dependencies": {
     "browserify": "^13.0.1",
-    "functionfoundry": "^0.9.11",
+    "functionfoundry": "^0.10.1",
     "uglifyify": "^3.0.1"
   },
   "devDependencies": {
