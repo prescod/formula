@@ -28,15 +28,13 @@
     "functionfoundry": "^0.10.14"
   },
   "devDependencies": {
-    "babel-cli": "^6.1.2",
-    "babel-core": "^6.1.2",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.1.3",
-    "babel-preset-es2015": "^6.1.2",
-    "babel-tape-runner": "^2.0.1",
+    "babel-cli": "^6.11.4",
+    "babel-core": "^6.11.4",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.11.5",
+    "babel-preset-es2015": "^6.9.0",
     "browserify": "^13.0.1",
-    "faucet": "0.0.1",
     "jison": "^0.4.17",
-    "tape": "^4.5.1",
-    "uglifyify": "^3.0.1"
+    "tape": "^4.6.0",
+    "uglifyify": "^3.0.2"
   }
 }
