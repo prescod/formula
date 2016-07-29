@@ -3,12 +3,15 @@ var {run} = require('../lib/compiler')
 
 test('run should pass basic tests', function(t) {
 
-  t.plan(5)
+  t.plan(8)
   t.equal( run('2=2'), true )
   t.equal( run('2<>2'), false )
   t.equal( run('a=a', { a: 1 }), true )
   t.equal( run('a=b', { a: 1, b: 1 }), true )
   t.equal( run('a<>b', { a: 1, b: 1 }), false )
+  t.equal( run('a!1<>b', { 'a!1': 1, b: 1 }), false )
+  t.equal( run('Tran55Fee<>b', { 'Tran55Fee': 1, b: 1 }), false )
+  t.equal( run('@Tran55Fee<>b', { '@Tran55Fee': 1, b: 1 }), false )
 
 })
 

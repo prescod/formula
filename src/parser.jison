@@ -44,13 +44,8 @@ frac                        (?:\.[0-9]+)
 "%"                   return "%"
 [A-Za-z](?=[(])                    {return 'FUNC';}
 [A-Za-z][A-Za-z0-9\.]+(?=[(])                    {return 'FUNC';}
-\$\'(?:\'\'|[^'])*\'\!    yytext = yytext.substr(2,yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
-\'(?:\'\'|[^'])*\'\!    yytext = yytext.substr(1,yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
-[a-zA-Z]([a-zA-Z0-9.$]+)?\!  yytext = yytext.slice(0, -1); return "SHEET"
-\$([a-zA-Z])([a-zA-Z0-9.$]+)?\!  yytext = yytext.slice(1, -1); return "SHEET"
-\$?([a-zA-Z]+)\$?([0-9]+)                              return "CELL";
 \"(?:\"\"|[^"])*\"    yytext = yytext.substr(1,yyleng-2).replace(/\"\"/g, "\""); return "STRING";
-[a-zA-Z]([\[\]a-zA-Z0-9.$^\(]+)?  return 'IDENT'
+([\[\]a-zA-Z0-9.$^\!@\(]+)  return 'IDENT'
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
 
@@ -106,20 +101,14 @@ e
       {$$ = { type: "operator", subtype: 'prefix-plus', operands:[$2] }; }
   | e '&' e
       {$$ = { type: "operator", subtype: 'infix-concat', operands:[$1, $3] }; }
-  | '-' e %prec UMINUS
+  | '-' e
       {$$ = { type: "operator", subtype: 'prefix-minus', operands:[$2] }; }
   | '(' e ')'
       {$$ = { type: 'group', exp:$2 }; }
   | e ':' e
       {$$ = { type: 'range', subtype: 'local', topLeft:$1, bottomRight:$3 }; }
-  | CELL
-      {$$ = { type: 'cell', subtype: 'local', addr:$1 }; }
-  | SHEET CELL
-      { $$ = { type: 'cell', subtype: 'remote', worksheet: $1, addr:$2 }; }
   | IDENT
       { $$ = { type: 'value', subtype: 'variable', value:$1 }; }
-  | SHEET IDENT
-      { $$ = { type: 'cell', subtype: 'remote-named', worksheet: $1, addr:$2 }; }
   | func
       { $$ = $1; }
   | array_literal

@@ -5,6 +5,8 @@ import * as FF from 'functionfoundry'
 
 var compiledNumber = 0;
 
+export var functions = FF;
+
 export function compile(exp) {
   var ast = exp,
       jsCode,
@@ -51,7 +53,7 @@ export function compile(exp) {
           case 'prefix-plus':
             return namespace + "numbervalue(" + printItems(node.operands) + ")";
           case 'prefix-minus':
-            return namespace + "-numbervalue(" + printItems(node.operands) + ")";
+            return "-" + namespace + "numbervalue(" + printItems(node.operands) + ")";
           case 'infix-add':
             requires.push('add');
             return namespace + "add(" + printItems(node.operands) + ")";
@@ -154,7 +156,7 @@ export function compile(exp) {
 return (${compiled});
 //# sourceURL=formulafoundry_${id}
 `
-  );
+  ).bind(FF);
 
   f.id = id;
   f.exp = exp;
