@@ -3,9 +3,10 @@ var {compile} = require('../lib/compiler')
 
 test('compiler should pass basic tests', function(t) {
 
-  t.plan(13)
+  t.plan(15)
 
   t.equal(compile('2=2').code, "this.eq(2, 2)")
+  t.equal(compile('-2').code, "-this.numbervalue(2)")
   t.equal(compile('2 = 2').code, "this.eq(2, 2)")
   t.equal(compile('2<>2').code, "this.ne(2, 2)")
   t.equal(compile('2 > 2').code, "this.gt(2, 2)")
@@ -18,6 +19,7 @@ test('compiler should pass basic tests', function(t) {
   t.equal(compile('2/2').code, "this.divide(2, 2)")
   t.equal(compile('2^2').code, "this.power(2, 2)")
   t.equal(compile('"a" & "b"').code, "this.concatenate('a', 'b')")
+  t.equal(compile('@foo1').code, 'context.get("@foo1")')
 
 })
 
