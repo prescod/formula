@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-if (window) {
+if (typeof window === 'object' && typeof window.FormulaFoundry === 'undefined') {
   window.FormulaFoundry = require('./lib/compiler')
 }
 
@@ -9,6 +9,7 @@ if (window) {
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.functions = undefined;
 exports.compile = compile;
 exports.run = run;
 
@@ -23,6 +24,8 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 // Copyright 2015 Peter W Moresi
 
 var compiledNumber = 0;
+
+var functions = exports.functions = FF;
 
 function compile(exp) {
   var ast = exp,
@@ -46,6 +49,12 @@ function compile(exp) {
     return '\'' + s + '\'';
   }
 
+  function printFuncs(items) {
+    return items.map(function (n) {
+      return 'function() { return (' + compiler(n) + ') }.bind(this)';
+    }).join(', ');
+  }
+
   function printItems(items) {
     return items.map(function (n) {
       return compiler(n);
@@ -63,54 +72,60 @@ function compile(exp) {
       case 'operator':
         switch (node.subtype) {
           case 'prefix-plus':
-            return '+' + compiler(node.operands[0]);
+            return namespace + "numbervalue(" + printItems(node.operands) + ")";
           case 'prefix-minus':
-            return '-' + compiler(node.operands[0]);
+            return "-" + namespace + "numbervalue(" + printItems(node.operands) + ")";
           case 'infix-add':
             requires.push('add');
-            return namespace + "ADD(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "add(" + printItems(node.operands) + ")";
           case 'infix-subtract':
             requires.push('subtract');
-            return namespace + "SUBTRACT(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "subtract(" + printItems(node.operands) + ")";
           case 'infix-multiply':
             requires.push('multiply');
-            return namespace + "MULTIPLY(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "multiply(" + printItems(node.operands) + ")";
           case 'infix-divide':
             requires.push('divide');
-            return namespace + "DIVIDE(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "divide(" + printItems(node.operands) + ")";
           case 'infix-power':
             requires.push('power');
-            return namespace + 'POWER(' + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ')';
+            return namespace + 'power(' + printItems(node.operands) + ')';
           case 'infix-concat':
-            lhs = compiler(node.operands[0]);
-            rhs = compiler(node.operands[1]);
             requires.push('concatenate');
-            return namespace + "CONCATENATE(" + wrapString(lhs) + ', ' + wrapString(rhs) + ")";
+            return namespace + "concatenate(" + printItems(node.operands) + ")";
           case 'infix-eq':
             requires.push('eq');
-            return namespace + "EQ(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "eq(" + printItems(node.operands) + ")";
           case 'infix-ne':
             requires.push('ne');
-            return namespace + "NE(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "ne(" + printItems(node.operands) + ")";
           case 'infix-gt':
             requires.push('gt');
-            return namespace + "GT(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "gt(" + printItems(node.operands) + ")";
           case 'infix-gte':
             requires.push('gte');
-            return namespace + "GTE(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "gte(" + printItems(node.operands) + ")";
           case 'infix-lt':
             requires.push('lt');
-            return namespace + "LT(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "lt(" + printItems(node.operands) + ")";
           case 'infix-lte':
             requires.push('lte');
-            return namespace + "LTE(" + compiler(node.operands[0]) + ', ' + compiler(node.operands[1]) + ")";
+            return namespace + "lte(" + printItems(node.operands) + ")";
         }
         throw TypeException("Unknown operator: " + node.subtype);
       case 'group':
         return '(' + compiler(node.exp) + ')';
       case 'function':
-        requires.push(node.name.toUpperCase());
-        return namespace + node.name.toUpperCase() + '( ' + printItems(node.args) + ' )';
+        requires.push(node.name.toLowerCase() === 'if' ? 'branch' : node.name.toLowerCase());
+        switch (node.name) {
+          case 'if':
+            return namespace + 'branch( ' + printFuncs(node.args) + ' )';
+          case 'and':
+          case 'or':
+            return namespace + node.name.toLowerCase() + '( ' + printFuncs(node.args) + ' )';
+          default:
+            return namespace + node.name.toLowerCase() + '( ' + printItems(node.args) + ' )';
+        }
       case 'cell':
         if (typeof precedents !== "undefined" && !suppress) {
           precedents.push(node);
@@ -136,7 +151,8 @@ function compile(exp) {
           rhs = "function() { return (" + rhs + "); }";
         }
 
-        return 'context.range( ' + lhs + ', ' + rhs + ' )';
+        requires.push('ref');
+        return 'this.ref( ' + lhs + ', ' + rhs + ' )';
 
       case 'value':
         switch (node.subtype) {
@@ -162,7 +178,7 @@ function compile(exp) {
 
   var compiled = compiler(ast);
 
-  f = new Function('context', '// ' + exp + '\n  return (' + compiled + ');\n  //@ sourceURL=formula_function_' + id + '.js\'\n  ');
+  f = new Function('context', '/* formula: ' + exp + ' */\nreturn (' + compiled + ');\n//# sourceURL=formulafoundry_' + id + '\n').bind(FF);
 
   f.id = id;
   f.exp = exp;
@@ -171,6 +187,8 @@ function compile(exp) {
   f.precedents = precedents;
   f.requires = requires;
 
+  console.log(f);
+
   return f;
 }
 
@@ -178,13 +196,11 @@ function run(exp) {
   var locals = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
   var requires = arguments[2];
 
-  var compiled = compile(exp);
-  var requirements = requires;
-  //
+  var compiled = FF.isfunction(exp) ? exp : compile(exp);
+  var r = requires;
+
   if (typeof requires === 'undefined') {
-    requirements = compiled.requires.map(function (n) {
-      return n.toUpperCase();
-    }).reduce(function (out, name) {
+    r = compiled.requires.reduce(function (out, name) {
       out[name] = FF[name];
       return out;
     }, {});
@@ -197,7 +213,7 @@ function run(exp) {
     };
   }
 
-  return compiled.bind(requirements)(locals);
+  return compiled.bind(r)(locals);
 }
 
 },{"./parser":3,"functionfoundry":5}],3:[function(require,module,exports){
@@ -276,12 +292,12 @@ function run(exp) {
   }
 */
 var parser = (function(){
-var o=function(k,v,o,l){for(o=o||{},l=k.length;l--;o[k[l]]=v);return o},$V0=[1,4],$V1=[1,5],$V2=[1,6],$V3=[1,7],$V4=[1,8],$V5=[1,9],$V6=[1,12],$V7=[1,13],$V8=[1,14],$V9=[1,15],$Va=[1,16],$Vb=[1,17],$Vc=[1,25],$Vd=[1,19],$Ve=[1,20],$Vf=[1,21],$Vg=[1,22],$Vh=[1,23],$Vi=[1,24],$Vj=[1,26],$Vk=[1,27],$Vl=[1,28],$Vm=[1,29],$Vn=[1,30],$Vo=[1,31],$Vp=[5,6,7,8,9,10,11,12,13,14,15,16,17,19,20,33,34,37],$Vq=[5,6,7,8,12,13,14,15,16,17,19,33,34,37],$Vr=[1,60],$Vs=[1,61],$Vt=[19,33,34,37],$Vu=[5,6,7,8,9,10,12,13,14,15,16,17,19,33,34,37],$Vv=[5,6,12,13,14,15,16,19,33,34,37];
+var o=function(k,v,o,l){for(o=o||{},l=k.length;l--;o[k[l]]=v);return o},$V0=[1,4],$V1=[1,5],$V2=[1,6],$V3=[1,7],$V4=[1,10],$V5=[1,11],$V6=[1,12],$V7=[1,13],$V8=[1,14],$V9=[1,15],$Va=[1,23],$Vb=[1,17],$Vc=[1,18],$Vd=[1,19],$Ve=[1,20],$Vf=[1,21],$Vg=[1,22],$Vh=[1,24],$Vi=[1,25],$Vj=[1,26],$Vk=[1,27],$Vl=[1,28],$Vm=[1,29],$Vn=[5,6,7,8,9,10,11,12,13,14,15,16,17,19,20,31,32,35],$Vo=[5,6,7,8,12,13,14,15,16,17,19,31,32,35],$Vp=[1,56],$Vq=[1,57],$Vr=[19,31,32,35],$Vs=[5,6,7,8,9,10,12,13,14,15,16,17,19,31,32,35],$Vt=[5,6,12,13,14,15,16,19,31,32,35];
 var parser = {trace: function trace() { },
 yy: {},
-symbols_: {"error":2,"expressions":3,"e":4,"EOF":5,"=":6,"+":7,"-":8,"*":9,"/":10,"^":11,"<>":12,">":13,"<":14,">=":15,"<=":16,"&":17,"(":18,")":19,":":20,"CELL":21,"SHEET":22,"IDENT":23,"func":24,"array_literal":25,"TRUE":26,"FALSE":27,"STRING":28,"NUMBER":29,"%":30,"range":31,"param_list":32,",":33,";":34,"FUNC":35,"{":36,"}":37,"$accept":0,"$end":1},
-terminals_: {2:"error",5:"EOF",6:"=",7:"+",8:"-",9:"*",10:"/",11:"^",12:"<>",13:">",14:"<",15:">=",16:"<=",17:"&",18:"(",19:")",20:":",21:"CELL",22:"SHEET",23:"IDENT",26:"TRUE",27:"FALSE",28:"STRING",29:"NUMBER",30:"%",33:",",34:";",35:"FUNC",36:"{",37:"}"},
-productions_: [0,[3,2],[3,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,2],[4,3],[4,2],[4,3],[4,3],[4,1],[4,2],[4,1],[4,2],[4,1],[4,1],[4,1],[4,1],[4,1],[4,2],[4,1],[31,3],[32,1],[32,3],[32,3],[24,4],[24,3],[25,3]],
+symbols_: {"error":2,"expressions":3,"e":4,"EOF":5,"=":6,"+":7,"-":8,"*":9,"/":10,"^":11,"<>":12,">":13,"<":14,">=":15,"<=":16,"&":17,"(":18,")":19,":":20,"IDENT":21,"func":22,"array_literal":23,"TRUE":24,"FALSE":25,"STRING":26,"NUMBER":27,"%":28,"range":29,"param_list":30,",":31,";":32,"FUNC":33,"{":34,"}":35,"$accept":0,"$end":1},
+terminals_: {2:"error",5:"EOF",6:"=",7:"+",8:"-",9:"*",10:"/",11:"^",12:"<>",13:">",14:"<",15:">=",16:"<=",17:"&",18:"(",19:")",20:":",21:"IDENT",24:"TRUE",25:"FALSE",26:"STRING",27:"NUMBER",28:"%",31:",",32:";",33:"FUNC",34:"{",35:"}"},
+productions_: [0,[3,2],[3,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,3],[4,2],[4,3],[4,2],[4,3],[4,3],[4,1],[4,1],[4,1],[4,1],[4,1],[4,1],[4,2],[4,1],[29,3],[30,1],[30,3],[30,3],[22,4],[22,3],[23,3]],
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
 /* this == yyval */
 
@@ -339,57 +355,48 @@ case 18:
 this.$ = { type: 'range', subtype: 'local', topLeft:$$[$0-2], bottomRight:$$[$0] }; 
 break;
 case 19:
-this.$ = { type: 'cell', subtype: 'local', addr:$$[$0] }; 
-break;
-case 20:
- this.$ = { type: 'cell', subtype: 'remote', worksheet: $$[$0-1], addr:$$[$0] }; 
-break;
-case 21:
  this.$ = { type: 'value', subtype: 'variable', value:$$[$0] }; 
 break;
-case 22:
- this.$ = { type: 'cell', subtype: 'remote-named', worksheet: $$[$0-1], addr:$$[$0] }; 
-break;
-case 23: case 24:
+case 20: case 21:
  this.$ = $$[$0]; 
 break;
-case 25:
+case 22:
 this.$ = { type: 'value', subtype: 'boolean', value: true }; 
 break;
-case 26:
+case 23:
 this.$ = { type: 'value', subtype: 'boolean', value: false }; 
 break;
-case 27:
+case 24:
 this.$ = { type: 'value', subtype: 'string', value:String(yytext)}; 
 break;
-case 28:
+case 25:
 this.$ = { type: 'value', subtype: 'number', value:$$[$0-1]/100 }; 
 break;
-case 29:
+case 26:
 this.$ = { type: 'value', subtype: 'number', value:Number(yytext) }; 
 break;
-case 31:
+case 28:
  this.$ = [$$[$0]]; 
 break;
-case 32:
+case 29:
  this.$ = $$[$0-2].concat([$$[$0]]); 
 break;
-case 33:
+case 30:
  this.$ = ($$[$0][0].subtype !== 'array') ? [{ type: 'value', subtype: 'array', items:$$[$0-2] }, { type: 'value', subtype: 'array', items:$$[$0] }] : [{ type: 'value', subtype: 'array', items:$$[$0-2] }].concat($$[$0]); 
 break;
-case 34:
+case 31:
  this.$ = { type: 'function', name: $$[$0-3], args:$$[$0-1] }; 
 break;
-case 35:
+case 32:
  this.$ = { type: 'function', name: $$[$0-2], args:[] }; 
 break;
-case 36:
+case 33:
  this.$ = { type: 'value', subtype: 'array', items:$$[$0-1] }; 
 break;
 }
 },
-table: [{3:1,4:2,6:[1,3],7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{1:[3]},{5:[1,18],6:$Vc,7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,12:$Vi,13:$Vj,14:$Vk,15:$Vl,16:$Vm,17:$Vn,20:$Vo},{4:32,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:33,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:34,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:35,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},o($Vp,[2,19]),{21:[1,36],23:[1,37]},o($Vp,[2,21]),o($Vp,[2,23]),o($Vp,[2,24]),o($Vp,[2,25]),o($Vp,[2,26]),o($Vp,[2,27]),o($Vp,[2,29],{30:[1,38]}),{18:[1,39]},{4:41,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,32:40,35:$Va,36:$Vb},{1:[2,1]},{4:42,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:43,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:44,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:45,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:46,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:47,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:48,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:49,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:50,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:51,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:52,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:53,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:54,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{5:[1,55],6:$Vc,7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,12:$Vi,13:$Vj,14:$Vk,15:$Vl,16:$Vm,17:$Vn,20:$Vo},o($Vq,[2,14],{9:$Vf,10:$Vg,11:$Vh,20:$Vo}),o($Vp,[2,16]),{6:$Vc,7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,12:$Vi,13:$Vj,14:$Vk,15:$Vl,16:$Vm,17:$Vn,19:[1,56],20:$Vo},o($Vp,[2,20]),o($Vp,[2,22]),o($Vp,[2,28]),{4:41,7:$V0,8:$V1,18:$V2,19:[1,58],21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,32:57,35:$Va,36:$Vb},{33:$Vr,34:$Vs,37:[1,59]},o($Vt,[2,31],{6:$Vc,7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,12:$Vi,13:$Vj,14:$Vk,15:$Vl,16:$Vm,17:$Vn,20:$Vo}),o($Vq,[2,3],{9:$Vf,10:$Vg,11:$Vh,20:$Vo}),o($Vq,[2,4],{9:$Vf,10:$Vg,11:$Vh,20:$Vo}),o($Vu,[2,5],{11:$Vh,20:$Vo}),o($Vu,[2,6],{11:$Vh,20:$Vo}),o([5,6,7,8,9,10,11,12,13,14,15,16,17,19,33,34,37],[2,7],{20:$Vo}),o($Vv,[2,8],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o($Vv,[2,9],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o($Vv,[2,10],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o($Vv,[2,11],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o($Vv,[2,12],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o($Vv,[2,13],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,17:$Vn,20:$Vo}),o([5,6,12,13,14,15,16,17,19,33,34,37],[2,15],{7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,20:$Vo}),o($Vp,[2,18]),{1:[2,2]},o($Vp,[2,17]),{19:[1,62],33:$Vr,34:$Vs},o($Vp,[2,35]),o($Vp,[2,36]),{4:63,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,35:$Va,36:$Vb},{4:41,7:$V0,8:$V1,18:$V2,21:$V3,22:$V4,23:$V5,24:10,25:11,26:$V6,27:$V7,28:$V8,29:$V9,32:64,35:$Va,36:$Vb},o($Vp,[2,34]),o($Vt,[2,32],{6:$Vc,7:$Vd,8:$Ve,9:$Vf,10:$Vg,11:$Vh,12:$Vi,13:$Vj,14:$Vk,15:$Vl,16:$Vm,17:$Vn,20:$Vo}),o([19,37],[2,33],{33:$Vr,34:$Vs})],
-defaultActions: {18:[2,1],55:[2,2]},
+table: [{3:1,4:2,6:[1,3],7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{1:[3]},{5:[1,16],6:$Va,7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,12:$Vg,13:$Vh,14:$Vi,15:$Vj,16:$Vk,17:$Vl,20:$Vm},{4:30,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:31,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:32,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:33,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},o($Vn,[2,19]),o($Vn,[2,20]),o($Vn,[2,21]),o($Vn,[2,22]),o($Vn,[2,23]),o($Vn,[2,24]),o($Vn,[2,26],{28:[1,34]}),{18:[1,35]},{4:37,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,30:36,33:$V8,34:$V9},{1:[2,1]},{4:38,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:39,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:40,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:41,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:42,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:43,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:44,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:45,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:46,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:47,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:48,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:49,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:50,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{5:[1,51],6:$Va,7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,12:$Vg,13:$Vh,14:$Vi,15:$Vj,16:$Vk,17:$Vl,20:$Vm},o($Vo,[2,14],{9:$Vd,10:$Ve,11:$Vf,20:$Vm}),o($Vo,[2,16],{9:$Vd,10:$Ve,11:$Vf,20:$Vm}),{6:$Va,7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,12:$Vg,13:$Vh,14:$Vi,15:$Vj,16:$Vk,17:$Vl,19:[1,52],20:$Vm},o($Vn,[2,25]),{4:37,7:$V0,8:$V1,18:$V2,19:[1,54],21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,30:53,33:$V8,34:$V9},{31:$Vp,32:$Vq,35:[1,55]},o($Vr,[2,28],{6:$Va,7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,12:$Vg,13:$Vh,14:$Vi,15:$Vj,16:$Vk,17:$Vl,20:$Vm}),o($Vo,[2,3],{9:$Vd,10:$Ve,11:$Vf,20:$Vm}),o($Vo,[2,4],{9:$Vd,10:$Ve,11:$Vf,20:$Vm}),o($Vs,[2,5],{11:$Vf,20:$Vm}),o($Vs,[2,6],{11:$Vf,20:$Vm}),o([5,6,7,8,9,10,11,12,13,14,15,16,17,19,31,32,35],[2,7],{20:$Vm}),o($Vt,[2,8],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o($Vt,[2,9],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o($Vt,[2,10],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o($Vt,[2,11],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o($Vt,[2,12],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o($Vt,[2,13],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,17:$Vl,20:$Vm}),o([5,6,12,13,14,15,16,17,19,31,32,35],[2,15],{7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,20:$Vm}),o($Vn,[2,18]),{1:[2,2]},o($Vn,[2,17]),{19:[1,58],31:$Vp,32:$Vq},o($Vn,[2,32]),o($Vn,[2,33]),{4:59,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,33:$V8,34:$V9},{4:37,7:$V0,8:$V1,18:$V2,21:$V3,22:8,23:9,24:$V4,25:$V5,26:$V6,27:$V7,30:60,33:$V8,34:$V9},o($Vn,[2,31]),o($Vr,[2,29],{6:$Va,7:$Vb,8:$Vc,9:$Vd,10:$Ve,11:$Vf,12:$Vg,13:$Vh,14:$Vi,15:$Vj,16:$Vk,17:$Vl,20:$Vm}),o([19,35],[2,30],{31:$Vp,32:$Vq})],
+defaultActions: {16:[2,1],51:[2,2]},
 parseError: function parseError(str, hash) {
     if (hash.recoverable) {
         this.trace(str);
@@ -870,19 +877,19 @@ var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
 case 0:/* skip whitespace */
 break;
-case 1:return 29
+case 1:return 27
 break;
-case 2:return 26
+case 2:return 24
 break;
-case 3:return 27
+case 3:return 25
 break;
-case 4:return 26
+case 4:return 24
 break;
-case 5:return 27
+case 5:return 25
 break;
-case 6:return 26
+case 6:return 24
 break;
-case 7:return 27
+case 7:return 25
 break;
 case 8:return 9
 break;
@@ -926,32 +933,22 @@ case 27:return ";"
 break;
 case 28:return "%"
 break;
-case 29:return 35;
+case 29:return 33;
 break;
-case 30:return 35;
+case 30:return 33;
 break;
-case 31:yy_.yytext = yy_.yytext.substr(2,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
+case 31:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-2).replace(/\"\"/g, "\""); return "STRING";
 break;
-case 32:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-3).replace(/\"\"/g, "\""); return "SHEET";
+case 32:return 21
 break;
-case 33:yy_.yytext = yy_.yytext.slice(0, -1); return "SHEET"
+case 33:return 5
 break;
-case 34:yy_.yytext = yy_.yytext.slice(1, -1); return "SHEET"
-break;
-case 35:return "CELL";
-break;
-case 36:yy_.yytext = yy_.yytext.substr(1,yy_.yyleng-2).replace(/\"\"/g, "\""); return "STRING";
-break;
-case 37:return 23
-break;
-case 38:return 5
-break;
-case 39:return 'INVALID'
+case 34:return 'INVALID'
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:[0-9]+(\.[0-9]+)?\b)/,/^(?:TRUE\b)/,/^(?:FALSE\b)/,/^(?:true\b)/,/^(?:false\b)/,/^(?:True\b)/,/^(?:False\b)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:&)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>=)/,/^(?:<=)/,/^(?:<>)/,/^(?:=)/,/^(?:>)/,/^(?:<)/,/^(?:\{)/,/^(?:\})/,/^(?:!)/,/^(?:,)/,/^(?::)/,/^(?:;)/,/^(?:%)/,/^(?:[A-Za-z](?=[(]))/,/^(?:[A-Za-z][A-Za-z0-9\.]+(?=[(]))/,/^(?:\$'(?:''|[^'])*'!)/,/^(?:'(?:''|[^'])*'!)/,/^(?:[a-zA-Z]([a-zA-Z0-9.$]+)?!)/,/^(?:\$([a-zA-Z])([a-zA-Z0-9.$]+)?!)/,/^(?:\$?([a-zA-Z]+)\$?([0-9]+))/,/^(?:"(?:""|[^"])*")/,/^(?:[a-zA-Z]([a-zA-Z0-9.$^\(]+)?)/,/^(?:$)/,/^(?:.)/],
-conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],"inclusive":true}}
+rules: [/^(?:\s+)/,/^(?:[0-9]+(\.[0-9]+)?\b)/,/^(?:TRUE\b)/,/^(?:FALSE\b)/,/^(?:true\b)/,/^(?:false\b)/,/^(?:True\b)/,/^(?:False\b)/,/^(?:\*)/,/^(?:\/)/,/^(?:-)/,/^(?:\+)/,/^(?:&)/,/^(?:\^)/,/^(?:\()/,/^(?:\))/,/^(?:>=)/,/^(?:<=)/,/^(?:<>)/,/^(?:=)/,/^(?:>)/,/^(?:<)/,/^(?:\{)/,/^(?:\})/,/^(?:!)/,/^(?:,)/,/^(?::)/,/^(?:;)/,/^(?:%)/,/^(?:[A-Za-z](?=[(]))/,/^(?:[A-Za-z][A-Za-z0-9\.]+(?=[(]))/,/^(?:"(?:""|[^"])*")/,/^(?:([\[\]a-zA-Z0-9.$^\!@\(]+))/,/^(?:$)/,/^(?:.)/],
+conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34],"inclusive":true}}
 });
 return lexer;
 })();
@@ -984,24 +981,27 @@ if (typeof module !== 'undefined' && require.main === module) {
 },{"_process":7,"fs":4,"path":6}],4:[function(require,module,exports){
 
 },{}],5:[function(require,module,exports){
-'use strict';
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
 
 // Copyright 2015 Peter W Moresi
 
 // Returns true when the value is a finite number.
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-
-function ISNUMBER(value) {
-  return typeof value === 'number' && !isNaN(value) && isFinite(value);
+function isnumber(value) {
+  return typeof value === 'number' && !Number.isNaN(value) && isFinite(value);
 }
 
 // Copyright 2015 Peter W Moresi
 
 // List of errors in the spreadsheet system
 
-function FFError(message) {
-  this.name = "NotImplementedError";
+function FFError(message, name) {
+  this.name = name || "NotImplementedError";
   this.message = message || "";
 }
 
@@ -1010,17 +1010,17 @@ FFError.prototype.toString = function () {
   return this.message;
 };
 
-var nil = new FFError('#NULL!');
-var div0 = new FFError('#DIV/0!');
-var value = new FFError('#VALUE!');
-var ref = new FFError('#REF!');
-var name = new FFError('#NAME?');
-var num = new FFError('#NUM!');
-var na = new FFError('#N/A!');
-var error$1 = new FFError('#ERROR!');
-var data = new FFError('#GETTING_DATA!');
-var missing = new FFError('#MISSING!');
-var unknown = new FFError('#UNKNOWN!');
+var nil = new FFError('#NULL!', "Null reference");
+var div0 = new FFError('#DIV/0!', "Divide by zero");
+var value = new FFError('#VALUE!', "Invalid value");
+var ref = new FFError('#REF!', "Invalid reference");
+var name = new FFError('#NAME?', "Invalid name");
+var num = new FFError('#NUM!', "Invalid number");
+var na = new FFError('#N/A!', "Not applicable");
+var error$1 = new FFError('#ERROR!', "Error");
+var data = new FFError('#GETTING_DATA!', "Error getting data");
+var missing = new FFError('#MISSING!', "Missing");
+var unknown = new FFError('#UNKNOWN!', "Unknown error");
 var error$2 = {
   nil: nil,
   div0: div0,
@@ -1036,10 +1036,10 @@ var error$2 = {
 };
 
 // ABS computes absolute value of a number
-function ABS(value) {
+function abs(value) {
 
   // Return `#VALUE!` if not number
-  if (!ISNUMBER(value)) {
+  if (!isnumber(value)) {
     return error$2.value;
   }
 
@@ -1048,10 +1048,10 @@ function ABS(value) {
 }
 
 // ACOS computes the inverse cosine of a number
-function ACOS(value) {
+function acos(value) {
 
   // Return `#VALUE!` if not number
-  if (!ISNUMBER(value)) {
+  if (!isnumber(value)) {
     return error$2.value;
   }
 
@@ -1060,7 +1060,7 @@ function ACOS(value) {
 }
 
 // ADD calculates the sum of two numbers.
-function ADD() {
+function add() {
   for (var _len = arguments.length, values = Array(_len), _key = 0; _key < _len; _key++) {
     values[_key] = arguments[_key];
   }
@@ -1076,7 +1076,7 @@ function ADD() {
 
   // Return `#VALUE!` if either a or b is not a number.
 
-  if (!ISNUMBER(a) || !ISNUMBER(b)) {
+  if (!isnumber(a) || !isnumber(b)) {
     return error$2.value;
   }
 
@@ -1084,8 +1084,26 @@ function ADD() {
   return a + b;
 }
 
+// ISERR returns true when the value is an error (except `#NA!`) or when then
+// value is a number which is NaN or [-]Infinity.
+function iserr(value) {
+  return value !== error$2.na && value.constructor.name === 'Error' || typeof value === 'number' && (Number.isNaN(value) || !Number.isFinite(value));
+}
+
+// ISERROR returns true when the value is an error.
+function iserror(value) {
+  return iserr(value) || value === error$2.na;
+}
+
+// Copyright 2015 Peter W Moresi
+
+// ISFUNCTION returns true when `value` is a function.
+function isfunction(value) {
+  return value && Object.prototype.toString.call(value) == '[object Function]';
+};
+
 // AND reduces list of truthy values into true or false value
-function AND() {
+function and() {
   for (var _len2 = arguments.length, criteria = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
     criteria[_key2] = arguments[_key2];
   }
@@ -1093,19 +1111,19 @@ function AND() {
   // Reduce criteria into boolean value.
   return criteria.reduce(function (acc, item) {
 
+    // Once `false` or #error! is found always return previously value
+    if (acc === false || iserror(acc)) return acc;
+
+    // find the value if a literal or deferred value
+    var val = isfunction(item) ? item() : item;
+
     // return `#VALUE!` if not true, false, 1 or 0
-    if (item !== true && item !== false && item !== 1 && item !== 0) {
+    if (val !== true && val !== false && val !== 1 && val !== 0) {
       return error$2.value;
     }
 
-    // Once `#VALUE!` is found then always return `#VALUE!`
-    if (acc === error$2.value) return error$2.value;
-
-    // Once `false` is found always return `false`
-    if (acc === false) return false;
-
-    // Return the current value whether true or false
-    return item === true || item === 1;
+    // Return true when value is true or 1
+    return val === true || val === 1;
   });
 }
 
@@ -1113,19 +1131,19 @@ function AND() {
 
 // FLATTEN converts a nested array into a flattened array. It only supports one
 // level of nesting.
-function FLATTEN(ref) {
+function flatten(ref) {
   return ref.reduce(function (a, b) {
     return a.concat(b);
   }, []);
 }
 
 // SUM a given list of `numbers`
-function SUM() {
+function sum() {
   for (var _len3 = arguments.length, numbers = Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
     numbers[_key3] = arguments[_key3];
   }
 
-  return FLATTEN(FLATTEN(numbers)).reduce(function (a, b) {
+  return flatten(flatten(numbers)).reduce(function (a, b) {
     if (typeof b !== 'number') {
       return error$2.value;
     }
@@ -1133,34 +1151,23 @@ function SUM() {
   });
 }
 
-// ISERR returns true when the value is an error (except `#NA!`) or when then
-// value is a number which is NaN or [-]Infinity.
-function ISERR(value) {
-  return value !== error$2.na && value.constructor.name === 'Error' || typeof value === 'number' && (Number.isNaN(value) || !Number.isFinite(value));
-}
-
-// ISERROR returns true when the value is an error.
-function ISERROR(value) {
-  return ISERR(value) || value === error$2.na;
-}
-
 // AVERAGE computes sum of items divided by number of items
-function AVERAGE() {
+function average() {
 
   // compute sum all of the items.
-  var sum = SUM.apply(undefined, arguments);
+  var v = sum.apply(undefined, arguments);
 
   // return sum when computed error.
-  if (ISERROR(sum)) {
-    return sum;
+  if (iserror(v)) {
+    return v;
   }
 
   // return sum divided by item count
-  return sum / arguments.length;
+  return v / arguments.length;
 }
 
 // BIN2DEC converts binary string into decimal value
-function BIN2DEC(value) {
+function bin2dec(value) {
   var valueAsString;
 
   if (typeof value === "string") {
@@ -1182,14 +1189,54 @@ function BIN2DEC(value) {
   return parseInt(valueAsString, 2);
 };
 
+// branch is the function equivalent to `if-then-else`
+//
+// syntax:
+// branch( test, result_if_true, [test2, result_if_true,] false_result )
+function branch() {
+  for (var _len4 = arguments.length, cases = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+    cases[_key4] = arguments[_key4];
+  }
+
+  var resolved = false;
+
+  // Reduce all cases into a value.
+  return cases.reduce(function (acc, item, index) {
+    var val = void 0;
+
+    // Return previously resolved result
+    if (resolved === true) return acc;
+
+    // Handle last item
+    if (index === cases.length - 1) {
+      // There is no last item.
+      if (index % 2 === 1) return;
+
+      // return the last item
+      return isfunction(item) ? item() : item;
+    }
+
+    // Check if condition is true
+    if (index % 2 === 0 && (isfunction(item) && item() === true || item === true)) {
+      resolved = true;
+      val = cases[index + 1];
+      return isfunction(val) ? val() : val;
+    }
+
+    return acc;
+  }, undefined);
+}
+
 // Copyright 2015 Peter W Moresi
 
 // Shared constants
 var d1900 = new Date(1900, 0, 1);
 var JulianOffset = 2415019;
+var SecondsInMinute = 60;
 var SecondsInHour = 3600;
 var SecondsInDay = 86400;
 var MilliSecondsInDay = 86400000;
+var AllowedDates = { H: "h]", M: "m]", MM: "mm]", S: "s]", SS: "ss]" };
 var DayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 var DayNames3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 var MonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -1215,7 +1262,7 @@ var AllowedColors = {
 };
 
 // CELLINDEX computes the index for row and column in a 2 dimensional array.
-function CELLINDEX(row, col) {
+function cellindex(row, col) {
   // Multiple row by maximum columns plus the col.
   return Math.floor(row * MaxCols + col);
 }
@@ -1223,7 +1270,7 @@ function CELLINDEX(row, col) {
 // Copyright 2015 Peter W Moresi
 
 // UNIQUE reduces an `array` into an array without duplicate values.
-function UNIQUE(array) {
+function unique(array) {
   return array.reduce(function (p, c) {
     if (p.indexOf(c) < 0) p.push(c);
     return p;
@@ -1231,14 +1278,14 @@ function UNIQUE(array) {
 }
 
 // CHANGED computes the list of keys that are different between two objects.
-function CHANGED(a, b) {
+function changed(a, b) {
 
   // Compute the keys in object a and b.
   var keysA = Object.keys(a),
       keysB = Object.keys(b);
 
   // Find the unique set of properties comparing a to b and b to a.
-  return UNIQUE(keysA.filter(function (n) {
+  return unique(keysA.filter(function (n) {
     return a[n] !== b[n];
   }).concat(keysB.filter(function (n) {
     return a[n] !== b[n];
@@ -1246,10 +1293,10 @@ function CHANGED(a, b) {
 }
 
 // CHOOSE accepts an index and a list of items. It returns the item that corresponds to the index.
-function CHOOSE(index) {
+function choose(index) {
 
   // Return `#NA!` if index or items are not provided.
-  if (!index || arguments.length - 1 === 0) {
+  if (!index || (arguments.length <= 1 ? 0 : arguments.length - 1) === 0) {
     return error$2.na;
   }
 
@@ -1259,7 +1306,7 @@ function CHOOSE(index) {
   }
 
   // Return `#VALUE!` if number of items is less than index.
-  if (arguments.length - 1 < index) {
+  if ((arguments.length <= 1 ? 0 : arguments.length - 1) < index) {
     return error$2.value;
   }
 
@@ -1270,16 +1317,21 @@ function CHOOSE(index) {
 // Copyright 2015 Peter W Moresi
 
 // ISBLANK returns true when the value is undefined or null.
-function ISBLANK(value) {
+function isblank(value) {
   return typeof value === 'undefined' || value === null;
 };
 
 // Copyright 2015 Peter W Moresi
 
+// ISARRAY returns true when the value is an aray.
+function isarray(value) {
+  return Object.prototype.toString.call(value) === '[object Array]';
+}
+
 // SELECT fields from object
-function SELECT(fields, body) {
+function select(fields, body) {
   // non-json
-  if (!body || 'object' != (typeof body === 'undefined' ? 'undefined' : _typeof(body))) return;
+  if (!body || 'object' != (typeof body === "undefined" ? "undefined" : _typeof(body))) return;
 
   // check for fields
   if (!fields) return;
@@ -1288,7 +1340,7 @@ function SELECT(fields, body) {
   if ('string' == typeof fields) fields = fields.split(/ *, */);
 
   // fields array
-  if (Array.isArray(body)) {
+  if (isarray(body)) {
     return body.map(function (obj) {
       return fields.reduce(function (ret, key) {
         ret[key] = obj[key];
@@ -1307,18 +1359,18 @@ function SELECT(fields, body) {
 }
 
 // CLEAN accepts an object and remove properties that are blank.
-function CLEAN(obj) {
+function clean(obj) {
   // Compute keys where value is non blank.
   var keys = Object.keys(obj).filter(function (n) {
-    return !ISBLANK(obj[n]);
+    return !isblank(obj[n]);
   });
 
   // Compute object with only non-blank keys.
-  return SELECT(keys, obj);
+  return select(keys, obj);
 }
 
 // CODE accepts text and optionally index (default 1) returning the character code.
-function CODE() {
+function code() {
   var text = arguments.length <= 0 || arguments[0] === undefined ? '' : arguments[0];
   var index = arguments.length <= 1 || arguments[1] === undefined ? 1 : arguments[1];
 
@@ -1330,20 +1382,20 @@ function CODE() {
 // Copyright 2015 Peter W Moresi
 
 // ISTEXT returns true when the value is a string.
-function ISTEXT(value) {
+function istext(value) {
   return 'string' === typeof value;
 };
 
 // ISREF returns true when the value is a reference.
-function ISREF(value) {
+function isref(value) {
   if (!value) return false;
-  return value.isRef === true;
+  return value._isref === true;
 }
 
 // Convert letter to number (e.g A -> 0)
-function COLUMNNUMBER(column) {
+function columnnumber(column) {
 
-  if (!ISTEXT(column)) {
+  if (!istext(column)) {
     return error$2.value;
   }
 
@@ -1370,21 +1422,21 @@ function COLUMNNUMBER(column) {
 }
 
 // COLUMN return the column number that corresponds to the reference.
-function COLUMN(value) {
+function column(value) {
 
   // Return `#VALUE!` when the value is not a reference.
-  if (!ISREF(value)) {
+  if (!isref(value)) {
     return error$2.value;
   }
 
   // Run the COLUMNNUMBER and convert to base 1.
-  return COLUMNNUMBER(value.column) + 1;
+  return columnnumber(value.column) + 1;
 }
 
 // Convert index to letter (e.g 0 -> A)
-function COLUMNLETTER(index) {
+function columnletter(index) {
 
-  if (!ISNUMBER(index)) {
+  if (!isnumber(index)) {
     return error$2.value;
   }
 
@@ -1425,103 +1477,22 @@ function COLUMNLETTER(index) {
 // Copyright 2015 Peter W Moresi
 
 // CONCATENATE reduces a list of values into a single string.
-function CONCATENATE() {
-  for (var _len4 = arguments.length, values = Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-    values[_key4] = arguments[_key4];
+function concatenate() {
+  for (var _len5 = arguments.length, values = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+    values[_key5] = arguments[_key5];
   }
 
   // Combine into a single string value
   return values.reduce(function (acc, item) {
-    return '' + acc + item;
+    return "" + acc + item;
   });
 }
-
-// Copyright 2015 Peter W Moresi
-
-// COND accepts conditions and returns the even value after the first odd
-// value that is true. If no odd value is true then it returns the last odd
-// value when present.
-//
-// SYNTAX( cond1, result_if_true [, cond2, result_if_true, default_result] )
-function COND() {
-  for (var _len5 = arguments.length, cases = Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-    cases[_key5] = arguments[_key5];
-  }
-
-  var found = false;
-
-  // Reduce all cases into a value.
-  return cases.reduce(function (acc, item, index) {
-
-    // Return previously found result
-    if (found === true) return acc;
-
-    // Handle last item
-    if (index === cases.length - 1) {
-      // There is no last item.
-      if (index % 2 === 1) return;
-
-      // return the last item
-      return item;
-    }
-
-    // Check if condition is true
-    if (index % 2 === 0 && item === true) {
-      found = true;
-      // return the found item
-      return cases[index + 1];
-    }
-
-    return acc;
-  }, undefined);
-}
-
-// Copyright 2015 Peter W Moresi
-
-// ISARRAY returns true when the value is an aray.
-function ISARRAY(value) {
-  return Object.prototype.toString.call(value) === '[object Array]';
-}
-
-// Copyright 2015 Peter W Moresi
-
-// EQ compares two values and returns a boolean value.
-function EQ(a, b) {
-  // String comparisions are case-insensitive
-  if (typeof a === "string" && typeof b === "string") {
-    return a.toLowerCase() === b.toLowerCase();
-  } else {
-    return a === b;
-  }
-}
-
-// INT returns true when a needle is found in a lookup.
-function IN(needle, lookup) {
-
-  // Return `#NA!` when the needle and lookup are blank.
-  if (ISBLANK(needle) && ISBLANK(lookup)) {
-    return error$2.na;
-  }
-
-  // Return `#NA!` when the lookup is not an array.
-  if (!ISARRAY(lookup)) {
-    return error$2.na;
-  }
-
-  // Return true when some of the values match the needle.
-  return lookup.some(function (n) {
-    return EQ(n, needle);
-  });
-}
-
-// ALIAS CONTAINS
-var CONTAINS = IN;
 
 // COS returns the cosine of a value.
-function COS(value) {
+function cos(value) {
 
   // Return `#VALUE!` when value is not a number.
-  if (!ISNUMBER(value)) {
+  if (!isnumber(value)) {
     return error$2.value;
   }
 
@@ -1531,14 +1502,14 @@ function COS(value) {
 // Copyright 2015 Peter W Moresi
 
 // ISDATE returns true when the `value` is a JavaScript date object.
-function ISDATE(value) {
+function isdate(value) {
   return value && Object.prototype.toString.call(value) == '[object Date]';
 };
 
 // SERIAL convert a date object into a serial number.
-function SERIAL(date) {
+function serial(date) {
   // Credit: https://github.com/sutoiku/formula.js/
-  if (!ISDATE(date)) {
+  if (!isdate(date)) {
     return error$2.na;
   }
   var diff = Math.ceil((date - d1900) / MilliSecondsInDay);
@@ -1546,12 +1517,12 @@ function SERIAL(date) {
 }
 
 // DATE returns a serial number given a year, month and day.
-function DATE(year, month, day) {
-  return SERIAL(new Date(year, month - 1, day));
+function date(year, month, day) {
+  return serial(new Date(year, month - 1, day));
 }
 
 // PARSEDATE converts a value into a Date object.
-function PARSEDATE(val) {
+function parsedate(val) {
 
   /* *******************
   Extracted from Social Calc
@@ -1589,7 +1560,7 @@ function PARSEDATE(val) {
     return convert_date_julian_to_gregorian(Math.floor(val + JulianOffset));
   } else if (typeof val === 'string') {
     var timestamp = Date.parse(val);
-    if (isNaN(timestamp)) {
+    if (Number.isNaN(timestamp)) {
       return error$2.value;
     }
     return new Date(timestamp);
@@ -1599,21 +1570,21 @@ function PARSEDATE(val) {
 }
 
 // DATEVALUE parses a date string and returns a serial number.
-function DATEVALUE(d) {
-  return SERIAL(PARSEDATE(d));
+function datevalue(d) {
+  return serial(parsedate(d));
 }
 
 // DATEDIF return the difference between two dates given a start date, end date and unit.
-function DATEDIF(start_date, end_date, unit) {
+function datedif(start_date, end_date, unit) {
   var second = 1000,
       minute = second * 60,
       hour = minute * 60,
       day = hour * 24,
       week = day * 7;
-  start_date = PARSEDATE(start_date), end_date = PARSEDATE(end_date);
+  start_date = parsedate(start_date), end_date = parsedate(end_date);
 
   var timediff = end_date - start_date;
-  if (isNaN(timediff)) return NaN;
+  if (Number.isNaN(timediff)) return NaN;
 
   switch (unit) {
     case "Y":
@@ -1625,18 +1596,23 @@ function DATEDIF(start_date, end_date, unit) {
     case "D":
       return Math.floor(timediff / day);
     case "MD":
-      return end_date.getDate() - start_date.getDate();
+      return end_date.getdate() - start_date.getdate();
     case "YM":
       return end_date.getMonth() - start_date.getMonth();
     case "YD":
-      return new Error("NOT IMPLEMENTED");
+      return new error("NOT IMPLEMENTED");
     default:
       return undefined;
   }
 }
 
+// DAY parses a date string and returns the day of the month.
+function day(d) {
+  return parsedate(d).getDate();
+}
+
 // PARSEBOOL converts a truthy value into a boolean value.
-function PARSEBOOL(val) {
+function parsebool(val) {
 
   if (val instanceof Error) {
     return val;
@@ -1654,10 +1630,10 @@ function PARSEBOOL(val) {
   return error$2.value;
 }
 
-function DAYS360(start_date, end_date, method) {
-  method = PARSEBOOL(method);
-  start_date = PARSEDATE(start_date);
-  end_date = PARSEDATE(end_date);
+function days360(start_date, end_date, method) {
+  method = parsebool(method);
+  start_date = parsedate(start_date);
+  end_date = parsedate(end_date);
 
   if (start_date instanceof Error) {
     return start_date;
@@ -1695,7 +1671,7 @@ function DAYS360(start_date, end_date, method) {
 // Copyright 2015 Peter W Moresi
 
 // REPT creates string by repeating text a given number of times.
-function REPT(text, number) {
+function rept(text, number) {
   var r = '';
   for (var i = 0; i < number; i++) {
     r += text;
@@ -1704,7 +1680,7 @@ function REPT(text, number) {
 }
 
 // based on https://github.com/sutoiku/formula.js/blob/mast../src/engineering.js
-function DEC2BIN(input, places) {
+function dec2bin(input, places) {
 
   // exit if input is an error
   if (input instanceof Error) {
@@ -1714,18 +1690,18 @@ function DEC2BIN(input, places) {
   // cast input to number
   var number = parseInt(input);
 
-  if (Number.isNaN(number)) {
+  if (!/^-?[0-9]{1,3}$/.test(number) || Number.isNaN(number)) {
     return error$2.value;
   }
 
   // Return error.if number is not decimal, is lower than -512, or is greater than 511
-  if (!/^-?[0-9]{1,3}$/.test(number) || number < -512 || number > 511) {
+  if (number < -512 || number > 511) {
     return error$2.num;
   }
 
   // Ignore places and return a 10-character binary number if number is negative
   if (number < 0) {
-    return '1' + REPT('0', 9 - (512 + number).toString(2).length) + (512 + number).toString(2);
+    return '1' + rept('0', 9 - (512 + number).toString(2).length) + (512 + number).toString(2);
   }
 
   // Convert decimal number to binary
@@ -1736,7 +1712,7 @@ function DEC2BIN(input, places) {
     return result;
   } else {
     // Return error.if places is nonnumeric
-    if (isNaN(places)) {
+    if (!/^-?[0-9]{1,3}$/.test(places) || Number.isNaN(places)) {
       return error$2.value;
     }
 
@@ -1749,13 +1725,13 @@ function DEC2BIN(input, places) {
     places = Math.floor(places);
 
     // Pad return value with leading 0s (zeros) if necessary (using Underscore.string)
-    return places >= result.length ? REPT('0', places - result.length) + result : error$2.num;
+    return places >= result.length ? rept('0', places - result.length) + result : error$2.num;
   }
 }
 
 // Copyright 2015 Peter W Moresi
 
-function DIFF(a, b) {
+function diff(a, b) {
   var keysA = Object.keys(a),
       keysB = Object.keys(b),
       InA = keysB.filter(function (n) {
@@ -1783,7 +1759,7 @@ function DIFF(a, b) {
 }
 
 // DIVIDE calculates the product of two numbers.
-function DIVIDE() {
+function divide() {
   for (var _len6 = arguments.length, values = Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
     values[_key6] = arguments[_key6];
   }
@@ -1804,7 +1780,7 @@ function DIVIDE() {
   }
 
   // Return `#VALUE!` if either a or b is not a number.
-  if (!ISNUMBER(a) || !ISNUMBER(b)) {
+  if (!isnumber(a) || !isnumber(b)) {
     return error$2.value;
   }
 
@@ -1812,15 +1788,55 @@ function DIVIDE() {
   return a / b;
 }
 
+function edate(start_date, months) {
+  start_date = parsedate(start_date);
+
+  if (start_date instanceof Error) {
+    return start_date;
+  }
+  if (isNaN(months)) {
+    return error.value;
+  }
+  months = parseInt(months, 10);
+  start_date.setMonth(start_date.getMonth() + months);
+  return serial(start_date);
+};
+
+// DIVIDE calculates the product of two numbers.
+function eomonth(start_date, months) {
+  start_date = parsedate(start_date);
+
+  if (start_date instanceof Error) {
+    return start_date;
+  }
+  if (isNaN(months)) {
+    return error$2.value;
+  }
+  months = parseInt(months, 10);
+  return new Date(start_date.getFullYear(), start_date.getMonth() + months + 1, 0);
+}
+
+// Copyright 2015 Peter W Moresi
+
+// EQ compares two values and returns a boolean value.
+function eq(a, b) {
+  // String comparisions are case-insensitive
+  if (typeof a === "string" && typeof b === "string") {
+    return a.toLowerCase() === b.toLowerCase();
+  } else {
+    return a === b;
+  }
+}
+
 // Exact compares two values and only returns true if they meet strict equivalence.
-var EXACT = function EXACT(a, b) {
+var exact = function exact(a, b) {
   return a === b;
 };
 
 // Copyright 2015 Peter W Moresi
 
 // FILTER limits a range based on arrays of boolean values.
-function FILTER(range) {
+function filter(range) {
   for (var _len7 = arguments.length, filters = Array(_len7 > 1 ? _len7 - 1 : 0), _key7 = 1; _key7 < _len7; _key7++) {
     filters[_key7 - 1] = arguments[_key7];
   }
@@ -1829,7 +1845,7 @@ function FILTER(range) {
   // The filter may be for rows or for columns but not both.
   // A array filter may only filter a range that covers a single row or a single column.
 
-  function makeFilter() {
+  function makefilter() {
     return function (value, index) {
       return filters.reduce(function (previousValue, currentValue) {
         if (previousValue === false) {
@@ -1841,11 +1857,11 @@ function FILTER(range) {
     };
   }
 
-  return range.filter(makeFilter());
+  return range.filter(makefilter());
 }
 
 // FIND searches for text within a string
-function FIND(find_text) {
+function find(find_text) {
   var within_text = arguments.length <= 1 || arguments[1] === undefined ? '' : arguments[1];
   var position = arguments.length <= 2 || arguments[2] === undefined ? 1 : arguments[2];
 
@@ -1857,16 +1873,40 @@ function FIND(find_text) {
   return position === -1 ? error$2.value : position + 1;
 }
 
-function GT(a, b) {
-  if (ISREF(a) && ISREF(b)) {
+function fv(rate, periods, payment) {
+  var value = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
+  var type = arguments.length <= 4 || arguments[4] === undefined ? 0 : arguments[4];
+
+
+  // is this error code correct?
+  if (isblank(rate)) return error$2.na;
+  if (isblank(periods)) return error$2.na;
+  if (isblank(payment)) return error$2.na;
+
+  var fv;
+  if (rate === 0) {
+    fv = value + payment * periods;
+  } else {
+    var term = Math.pow(1 + rate, periods);
+    if (type === 1) {
+      fv = value * term + payment * (1 + rate) * (term - 1) / rate;
+    } else {
+      fv = value * term + payment * (term - 1) / rate;
+    }
+  }
+  return -fv;
+};
+
+function gt(a, b) {
+  if (isref(a) && isref(b)) {
     return error$2.na;
-  } else if (ISARRAY(a) && ISARRAY(b)) {
+  } else if (isarray(a) && isarray(b)) {
     return error$2.na;
-  } else if (ISREF(a) || ISARRAY(a)) {
+  } else if (isref(a) || isarray(a)) {
     return a.map(function (d) {
       return d > b;
     });
-  } else if (ISREF(b) || ISARRAY(b)) {
+  } else if (isref(b) || isarray(b)) {
     return b.map(function (d) {
       return d > a;
     });
@@ -1875,16 +1915,16 @@ function GT(a, b) {
   }
 }
 
-function GTE(a, b) {
-  if (ISREF(a) && ISREF(b)) {
+function gte(a, b) {
+  if (isref(a) && isref(b)) {
     return error.na;
-  } else if (ISARRAY(a) && ISARRAY(b)) {
+  } else if (isarray(a) && isarray(b)) {
     return error.na;
-  } else if (ISREF(a) || ISARRAY(a)) {
+  } else if (isref(a) || isarray(a)) {
     return a.map(function (d) {
       return d >= b;
     });
-  } else if (ISREF(b) || ISARRAY(b)) {
+  } else if (isref(b) || isarray(b)) {
     return b.map(function (d) {
       return d >= a;
     });
@@ -1899,7 +1939,7 @@ function GTE(a, b) {
 // rfc4122 version 4 compliant solution
 
 // Generate a globally unique identifier
-function GUID() {
+function guid() {
   var guid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     var r = Math.random() * 16 | 0,
         v = c == 'x' ? r : r & 0x3 | 0x8;
@@ -1909,11 +1949,11 @@ function GUID() {
 };
 
 // HLOOKUP searches for a needle across the rows.
-function HLOOKUP(needle, table) {
+function hlookup(needle, table) {
   var index = arguments.length <= 2 || arguments[2] === undefined ? 1 : arguments[2];
   var exactmatch = arguments[3];
 
-  if (typeof needle === "undefined" || ISBLANK(needle)) {
+  if (typeof needle === "undefined" || isblank(needle)) {
     return null;
   }
 
@@ -1934,78 +1974,80 @@ function HLOOKUP(needle, table) {
   return error$2.na;
 }
 
-// IF returns second argument if true, other it returns the third argument.
-function IF(value, value_if_true, value_if_false) {
-  return value || typeof value === 'string' && value.toLowerCase() === 'true' ? value_if_true : value_if_false;
+// remove decimal part of number
+function trunc(val) {
+  return val | 0;
+}
+
+function hour(value) {
+  // remove numbers before decimal place and convert fraction to 24 hour scale.
+  return trunc((value - trunc(value)) * 24);
+}
+
+function int(value) {
+  return Math.floor(value);
 }
 
 // IFBLANK return the `value` if non-blank, otherwise it returns `value_if_blank`.
-function IFBLANK(value, value_if_blank) {
-  return ISBLANK(value) ? value_if_blank : value;
+function ifblank(value, value_if_blank) {
+  return isblank(value) ? value_if_blank : value;
 }
 
 // ISEMPTY returns true when the value is blank, is an empty array or when it
 // is an empty string.
-function ISEMPTY(value) {
-  return ISBLANK(value) || ISARRAY(value) && value.length === 0 || ISTEXT(value) && value === '';
+function isempty(value) {
+  return isblank(value) || isarray(value) && value.length === 0 || istext(value) && value === '';
 };
 
 // IFBLANK return the `value` if empty, otherwise it returns `value_if_empty`.
-function IFEMPTY(value, value_if_empty) {
-  return ISEMPTY(value) ? value_if_empty : value;
+function ifempty(value, value_if_empty) {
+  return isempty(value) ? value_if_empty : value;
 }
 
 // IFBLANK return the `value` if error, otherwise it returns `value_if_error`.
-function IFERROR(value) {
+function iferror(value) {
   var value_if_error = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
 
-  return ISERROR(value) ? value_if_error : value;
+  return iserror(value) ? value_if_error : value;
 }
 
 // IFBLANK return the `value` if `#NA!`, otherwise it returns `value_if_na`.
-function IFNA(value, value_if_na) {
+function ifna(value, value_if_na) {
   return value === error$2.na ? value_if_na : value;
 }
 
 // INDEX2COL computes the row given a cell index
-function INDEX2ROW(index) {
+function index2row(index) {
   return Math.floor(index / MaxCols);
 }
 
 // INDEX2COL computes the column given a cell index
-function INDEX2COL(index) {
-  return index - INDEX2ROW(index) * MaxCols;
+function index2col(index) {
+  return index - index2row(index) * MaxCols;
 }
 
-// Copyright 2015 Peter W Moresi
-
-// ISFUNCTION returns true when `value` is a function.
-function ISFUNCTION(value) {
-  return value && Object.prototype.toString.call(value) == '[object Function]';
-};
-
 // REF accepts top and bottom and returns a reference object. It encapsulates a cell or a range.
-function REF(top, bottom) {
+function ref$1(top, bottom) {
 
   // The index must be a number
-  if (!ISNUMBER(top) && !ISFUNCTION(top)) {
+  if (!isnumber(top) && !isfunction(top)) {
     return error$2.value;
   }
 
-  if (ISBLANK(bottom)) {
+  if (isblank(bottom)) {
     bottom = top;
   }
 
   var getTop = function getTop() {
-    return ISFUNCTION(top) ? top() : top;
+    return isfunction(top) ? top() : top;
   };
   var getBottom = function getBottom() {
-    return ISFUNCTION(bottom) ? bottom() : bottom;
+    return isfunction(bottom) ? bottom() : bottom;
   };
 
   return {
 
-    get isRef() {
+    get _isref() {
       return true;
     },
 
@@ -2019,42 +2061,42 @@ function REF(top, bottom) {
 
     // Returns row (rowIndex plus 1)
     get row() {
-      return INDEX2ROW(getTop()) + 1;
+      return index2row(getTop()) + 1;
     },
 
     // Returns rowIndex (base 0)
     get rowIndex() {
-      return INDEX2ROW(getTop());
+      return index2row(getTop());
     },
 
     // Returns column letter
     get column() {
-      return COLUMNLETTER(INDEX2COL(getTop()));
+      return columnletter(index2col(getTop()));
     },
 
     // Returns column index
     get columnIndex() {
-      return INDEX2COL(getTop());
+      return index2col(getTop());
     },
 
     // Returns row (rowIndex plus 1)
     get bottomRow() {
-      return INDEX2ROW(getBottom()) + 1;
+      return index2row(getBottom()) + 1;
     },
 
     // Returns rowIndex (base 0)
     get bottomRowIndex() {
-      return INDEX2ROW(getBottom());
+      return index2row(getBottom());
     },
 
     // Returns column letter
     get bottomColumn() {
-      return COLUMNLETTER(INDEX2COL(getBottom()));
+      return columnletter(index2col(getBottom()));
     },
 
     // Returns column index
     get bottomColumnIndex() {
-      return INDEX2COL(getBottom());
+      return index2col(getBottom());
     },
 
     // The cell id puts the whole table into a single dimension. It simply needs to be between the topLeft and the bottomRight to qualify.
@@ -2081,8 +2123,8 @@ function REF(top, bottom) {
 
     // Return array with every row
     get rows() {
-      return UNIQUE(Array.apply(getTop(), Array(1 + (getBottom() - getTop()))).map(function (x, y) {
-        return INDEX2ROW(y + getTop());
+      return unique(Array.apply(getTop(), Array(1 + (getBottom() - getTop()))).map(function (x, y) {
+        return index2row(y + getTop());
       }));
     }
 
@@ -2090,14 +2132,21 @@ function REF(top, bottom) {
 }
 
 // Returns a cell indirection
-function INDIRECT(ref) {
-  return REF(ref);
+function indirect(ref) {
+  return ref(ref);
 }
 
 // Copyright 2015 Peter W Moresi
 
+// returns true if true or false
+function isboolean(val) {
+  return val === true || val === false;
+};
+
+// Copyright 2015 Peter W Moresi
+
 // ISEMAIL returns true when the `value` matches the regex.
-function ISEMAIL(value) {
+function isemail(value) {
   // credit to http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
   var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(value);
@@ -2106,26 +2155,45 @@ function ISEMAIL(value) {
 // Copyright 2015 Peter W Moresi
 
 // ISEVEN returns true when the value is even.
-function ISEVEN(value) {
+function iseven(value) {
   return !(Math.floor(Math.abs(value)) & 1);
 }
 
+function isleapyear(val) {
+  var date = parsedate(val);
+  var year = date.getFullYear();
+  return year % 4 === 0 && year % 100 !== 0 || year % 400 === 0;
+}
+
 // ISNA returns true when the value is `#NA!`
-function ISNA(value) {
+function isna(value) {
   return value === error$2.na;
 }
 
 // Copyright 2015 Peter W Moresi
 
 // ISODD returns true when the value is odd.
-function ISODD(value) {
+function isodd(value) {
   return !!(Math.floor(Math.abs(value)) & 1);
 }
+
+function isoweeknum(date) {
+  date = parsedate(date);
+
+  if (date instanceof Error) {
+    return date;
+  }
+
+  date.setHours(0, 0, 0);
+  date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+  var yearStart = new Date(date.getFullYear(), 0, 1);
+  return Math.ceil(((date - yearStart) / MilliSecondsInDay + 1) / 7);
+};
 
 // Copyright 2015 Peter W Moresi
 
 // ISURL returns true when the value matches the regex for a uniform resource locator.
-function ISURL(str) {
+function isurl(str) {
   // credit: http://stackoverflow.com/questions/5717093/check-if-a-javascript-string-is-an-url
   var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
   '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.?)+[a-z]{2,}|' + // domain name
@@ -2136,8 +2204,48 @@ function ISURL(str) {
   return pattern.test(str);
 }
 
+// N converts a `value` to a number. It supports numbers, true, false and dates.
+function n(value) {
+
+  // Pass numbers and errors back out.
+  if (isnumber(value) || iserror(value)) {
+    return value;
+  }
+
+  // Convert dates to serial number.
+  if (value instanceof Date) {
+    return serial(value);
+  }
+
+  // Convert true to 1
+  if (value === true) {
+    return 1;
+  }
+
+  // Convert false to 0
+  if (value === false) {
+    return 0;
+  }
+
+  // Return 0 in all other cases.
+  return 0;
+}
+
+function left(text, number) {
+
+  if (isblank(text)) {
+    return '';
+  }
+
+  if (!n(+number)) {
+    return text;
+  }
+
+  return text.substring(0, number);
+}
+
 // LEN returns the size of a string or array.
-function LEN(text) {
+function len(text) {
   if (arguments.length === 0) {
     return error$2.error;
   }
@@ -2156,7 +2264,7 @@ function LEN(text) {
 // Copyright 2015 Peter W Moresi
 
 // LOOKUP find a value in an array.
-function LOOKUP() {
+function lookup() {
   var lookup_value, lookup_array, lookup_vector, results_vector;
   if (arguments.length === 2) {
     // array form
@@ -2187,22 +2295,22 @@ function LOOKUP() {
 }
 
 // LOWER converts `value` to lower case
-function LOWER(value) {
-  if (!ISTEXT(value)) return error$2.value;
+function lower(value) {
+  if (!istext(value)) return error$2.value;
   return value.toLowerCase();
 }
 
 // LT compares two values and returns true when a is less than b.
-function LT(a, b) {
-  if (ISREF(a) && ISREF(b)) {
+function lt(a, b) {
+  if (isref(a) && isref(b)) {
     return error.na;
-  } else if (ISARRAY(a) && ISARRAY(b)) {
+  } else if (isarray(a) && isarray(b)) {
     return error.na;
-  } else if (ISREF(a) || ISARRAY(a)) {
+  } else if (isref(a) || isarray(a)) {
     return a.map(function (d) {
       return d < b;
     });
-  } else if (ISREF(b) || ISARRAY(b)) {
+  } else if (isref(b) || isarray(b)) {
     return b.map(function (d) {
       return d < a;
     });
@@ -2212,16 +2320,16 @@ function LT(a, b) {
 }
 
 // LT compares two values and returns true when a is less than or equal to b.
-function LTE(a, b) {
-  if (ISREF(a) && ISREF(b)) {
+function lte(a, b) {
+  if (isref(a) && isref(b)) {
     return error.na;
-  } else if (ISARRAY(a) && ISARRAY(b)) {
+  } else if (isarray(a) && isarray(b)) {
     return error.na;
-  } else if (ISREF(a) || ISARRAY(a)) {
+  } else if (isref(a) || isarray(a)) {
     return a.map(function (d) {
       return d <= b;
     });
-  } else if (ISREF(b) || ISARRAY(b)) {
+  } else if (isref(b) || isarray(b)) {
     return b.map(function (d) {
       return d <= a;
     });
@@ -2231,37 +2339,47 @@ function LTE(a, b) {
 }
 
 // MIN returns the smallest number from a `list`.
-function MIN() {
+function min() {
   for (var _len8 = arguments.length, list = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
     list[_key8] = arguments[_key8];
   }
 
-  return FLATTEN(list).reduce(function (min, next) {
-    if (ISNUMBER(next)) {
-      return Math.min(min, next);
-    }
+  var values = flatten(list);
+  if (values.length === 0) return;
+  return values.reduce(function (min, next) {
+    if (isblank(min)) return next;else if (isnumber(next)) return Math.min(min, next);else return min;
+  });
+}
 
-    return min;
-  }, Number.POSITIVE_INFINITY);
+function minute(value) {
+  // calculate total seconds
+  var totalSeconds = (value - trunc(value)) * SecondsInDay;
+  // calculate number of seconds for hour components
+  var hourSeconds = trunc(totalSeconds / SecondsInHour) * SecondsInHour;
+  // calculate the number seconds after remove seconds from the hours and convert to minutes
+  return trunc((totalSeconds - hourSeconds) / SecondsInMinute);
 }
 
 // MAX returns the largest number from a `list`.
-function MAX() {
+function max() {
   for (var _len9 = arguments.length, list = Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
     list[_key9] = arguments[_key9];
   }
 
-  return FLATTEN(list).reduce(function (max, next) {
-    if (ISNUMBER(next)) {
-      return Math.max(max, next);
-    }
+  var values = flatten(list);
+  if (values.length === 0) return;
+  return values.reduce(function (max, next) {
+    if (isblank(max)) return next;else if (isnumber(next)) return Math.max(max, next);else return max;
+  });
+}
 
-    return max;
-  }, Number.NEGATIVE_INFINITY);
+// MONTH parses a date value and returns the month of the year.
+function month(d) {
+  return parsedate(d).getMonth() + 1;
 }
 
 // MULTIPLY calculates the product of two numbers.
-function MULTIPLY() {
+function multiply() {
   for (var _len10 = arguments.length, values = Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
     values[_key10] = arguments[_key10];
   }
@@ -2277,7 +2395,7 @@ function MULTIPLY() {
 
   // Return `#VALUE!` if either a or b is not a number.
 
-  if (!ISNUMBER(a) || !ISNUMBER(b)) {
+  if (!isnumber(a) || !isnumber(b)) {
     return error$2.value;
   }
 
@@ -2285,72 +2403,132 @@ function MULTIPLY() {
   return a * b;
 }
 
-// N converts a `value` to a number. It supports numbers, true, false and dates.
-function N(value) {
-
-  // Pass numbers and errors back out.
-  if (ISNUMBER(value) || ISERROR(value)) {
-    return value;
-  }
-
-  // Convert dates to serial number.
-  if (value instanceof Date) {
-    return SERIAL(value);
-  }
-
-  // Convert true to 1
-  if (value === true) {
-    return 1;
-  }
-
-  // Convert false to 0
-  if (value === false) {
-    return 0;
-  }
-
-  // Return 0 in all other cases.
-  return 0;
-}
-
 // Convert a text value into a number value.
-function NUMBERVALUE(text, decimal_separator, group_separator) {
+function numbervalue(text, decimal_separator, group_separator) {
   decimal_separator = decimal_separator || '.';
   group_separator = group_separator || ',';
 
-  // define factor to be 1 so that it does nothing in most cases
-  var factor = 1;
-
   // Return `#VALUE!` when text is empty
-  if (ISEMPTY(text)) {
+  if (isempty(text)) {
     return error$2.value;
   }
 
   // Return the value when it is already a number.
-  if (ISNUMBER(text)) {
+  if (isnumber(text)) {
     return text;
   }
 
-  if (text[text.length - 1] === '%') {
-    // set the factor to 100 to convert from percentage to decimal
-    factor = 100;
-    text = text.substr(0, text.length - 1);
+  var foundDecimal = false,
+      len = text.length - 1;
+
+  if (text.length === 1) {
+    if (text.charCodeAt(0) < 48 || text.charCodeAt(0) > 57) {
+      return error$2.value;
+    }
+    return +text;
   }
 
-  return Number(text.replace(RegExp('[' + group_separator + ']', 'g'), '').replace(decimal_separator, '.')) / factor;
+  return text.split('').reduce(function (acc, item, index) {
+    if (acc === error$2.value) {
+      return error$2.value;
+    } else if (len === index) {
+      if (item === '%') {
+        return +acc / 100;
+      }
+      return +acc.concat(item);
+    } else if (item === decimal_separator) {
+      if (foundDecimal) return error$2.value;
+      foundDecimal = true;
+      return acc.concat('.');
+    } else if (item === group_separator) {
+      return acc;
+      // check if between 0 and 9 ascii codes
+    } else if (item.charCodeAt(0) < 48 || item.charCodeAt(0) > 57) {
+      return error$2.value;
+    }
+
+    return acc.concat(item);
+  });
 };
 
 // NE returns true when a is not equal to b.
-function NE(a, b) {
-  return !EQ(a, b);
+function ne(a, b) {
+  return !eq(a, b);
 }
 
 // NOT negates a `value`
-function NOT(value) {
+function not(value) {
   return value !== true && value !== false && value !== 1 && value !== 0 ? error$2.value : !value;
 }
 
+function timevalue(time_text) {
+  // The JavaScript new Date() does not accept only time.
+  // To workaround the issue we put 1/1/1900 at the front.
+
+  var date = new Date("1/1/1900 " + time_text);
+
+  if (date instanceof Error) {
+    return date;
+  }
+
+  return (SecondsInHour * date.getHours() + SecondsInMinute * date.getMinutes() + date.getSeconds()) / SecondsInDay;
+};
+
+function now() {
+  var d = new Date();
+  return datevalue(d.toLocaleDateString()) + timevalue(d.toLocaleTimeString());
+};
+
+function npv(rate) {
+  rate = rate * 1;
+  var factor = 1,
+      sum = 0;
+
+  for (var _len11 = arguments.length, values = Array(_len11 > 1 ? _len11 - 1 : 0), _key11 = 1; _key11 < _len11; _key11++) {
+    values[_key11 - 1] = arguments[_key11];
+  }
+
+  for (var i = 0; i < values.length; i++) {
+    var factor = factor * (1 + rate);
+    sum += values[i] / factor;
+  }
+
+  return sum;
+}
+
+function nper(rate, pmt, pv, fv, type) {
+  var log, result;
+  rate = parseFloat(rate || 0);
+  pmt = parseFloat(pmt || 0);
+  pv = parseFloat(pv || 0);
+  fv = fv || 0;
+  type = type || 0;
+
+  log = function log(prim) {
+    if (Number.isNaN(prim)) {
+      return Math.log(0);
+    }
+    var num = Math.log(prim);
+    return num;
+  };
+
+  if (rate == 0.0) {
+    result = -(pv + fv) / pmt;
+  } else if (type > 0.0) {
+    result = log(-(rate * fv - pmt * (1.0 + rate)) / (rate * pv + pmt * (1.0 + rate))) / log(1.0 + rate);
+  } else {
+    result = log(-(rate * fv - pmt) / (rate * pv + pmt)) / log(1.0 + rate);
+  }
+
+  if (Number.isNaN(result)) {
+    result = 0;
+  }
+
+  return result;
+}
+
 // OCT2DEC converts a octal value into a decimal value.
-function OCT2DEC(octalNumber) {
+function oct2dec(octalNumber) {
   // Credits: Based on implementation found in https://gist.github.com/ghalimi/4525876#file-oct2dec-js
   // Return error.when number passed in is not octal or has more than 10 digits
   if (!/^[0-7]{1,10}$/.test(octalNumber)) return error$2.num;
@@ -2378,32 +2556,51 @@ function OCT2DEC(octalNumber) {
   return nonNegativeDecimalNumber >= 536870912 ? nonNegativeDecimalNumber - 1073741824 : nonNegativeDecimalNumber;
 }
 
-// Copyright 2015 Peter W Moresi
-
 // OR returns true when any of the criter is true or 1.
-function OR() {
-  for (var _len11 = arguments.length, criteria = Array(_len11), _key11 = 0; _key11 < _len11; _key11++) {
-    criteria[_key11] = arguments[_key11];
+function or() {
+  for (var _len12 = arguments.length, criteria = Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
+    criteria[_key12] = arguments[_key12];
   }
 
   return criteria.reduce(function (acc, item) {
     if (acc === true) return true;
-    return item === true || item === 1;
+    var value = isfunction(item) ? item() : item;
+    return value === true || value === 1;
   }, false);
 }
 
+// parse querystring into object
+function parsequery() {
+  var query = arguments.length <= 0 || arguments[0] === undefined ? '' : arguments[0];
+
+
+  if (typeof query !== 'string') {
+    return error$2.na;
+  }
+
+  if (query.length === 0) {
+    return {};
+  }
+
+  return (query[0] === '?' ? query.substr(1) : query).split('&').reduce(function (acc, item) {
+    var n = item.split('=');
+    acc[n[0]] = n[1] ? n[1] : '';
+    return acc;
+  }, {});
+}
+
 // PI returns half the universal circle constant
-function PI() {
+function pi() {
   return τ / 2;
 }
 
 // PMT returns a loan payment
-function PMT(rate, periods, present) {
+function pmt(rate, periods, present) {
   var future = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
   var type = arguments.length <= 4 || arguments[4] === undefined ? 0 : arguments[4];
 
 
-  if (!ISNUMBER(rate) || !ISNUMBER(periods)) {
+  if (!isnumber(rate) || !isnumber(periods)) {
     return error$2.value;
   }
 
@@ -2420,9 +2617,9 @@ function PMT(rate, periods, present) {
 };
 
 // POWER computes the power of a value and nth degree.
-function POWER() {
-  for (var _len12 = arguments.length, values = Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
-    values[_key12] = arguments[_key12];
+function power() {
+  for (var _len13 = arguments.length, values = Array(_len13), _key13 = 0; _key13 < _len13; _key13++) {
+    values[_key13] = arguments[_key13];
   }
 
   // Return `#NA!` if 2 arguments are not provided.
@@ -2436,7 +2633,7 @@ function POWER() {
 
   // Return `#VALUE!` if either a or b is not a number.
 
-  if (!ISNUMBER(val) || !ISNUMBER(nth)) {
+  if (!isnumber(val) || !isnumber(nth)) {
     return error$2.value;
   }
 
@@ -2444,23 +2641,40 @@ function POWER() {
   return Math.pow(val, nth);
 }
 
-// REPLACE returns a new string after replacing with `new_text`.
-function REPLACE(text, position, length, new_text) {
+function pv(rate, periods, payment) {
+  var future = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
+  var type = arguments.length <= 4 || arguments[4] === undefined ? 0 : arguments[4];
 
-  if (ISERROR(position) || ISERROR(length) || typeof text !== 'string' || typeof new_text !== 'string') {
+
+  // is this error code correct?
+  if (isblank(rate)) return error$2.na;
+  if (isblank(periods)) return error$2.na;
+  if (isblank(payment)) return error$2.na;
+
+  if (rate === 0) {
+    return -payment * periods - future;
+  } else {
+    return ((1 - Math.pow(1 + rate, periods)) / rate * payment * (1 + rate * type) - future) / Math.pow(1 + rate, periods);
+  }
+};
+
+// REPLACE returns a new string after replacing with `new_text`.
+function replace(text, position, length, new_text) {
+
+  if (iserror(position) || iserror(length) || typeof text !== 'string' || typeof new_text !== 'string') {
     return error$2.value;
   }
   return text.substr(0, position - 1) + new_text + text.substr(position - 1 + length);
 }
 
 // RIGHT pulls a given number of character from the right side of `text`.
-function RIGHT(text, number) {
+function right(text, number) {
 
-  if (ISBLANK(text)) {
+  if (isblank(text)) {
     return '';
   }
 
-  if (!N(+number)) {
+  if (!n(+number)) {
     return text;
   }
 
@@ -2470,14 +2684,14 @@ function RIGHT(text, number) {
 // Copyright 2015 Peter W Moresi
 
 // CONVERT a number to a fixed precision.
-function ROUND(number, precision) {
+function round(number, precision) {
   return +number.toFixed(precision);
 }
 
 // Copyright 2015 Peter W Moresi
 
 // ROUNDUP converts a number to a fixed precision by rounding up.
-function ROUNDUP(number, precision) {
+function roundup(number, precision) {
   var factors = [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000];
   var factor = factors[precision];
   if (number > 0) {
@@ -2488,7 +2702,7 @@ function ROUNDUP(number, precision) {
 }
 
 // SEARCH finds text using wildcards ?, *, ~?, and ~*.
-function SEARCH(find_text, within_text, position) {
+function search(find_text, within_text, position) {
   if (!within_text) {
     return null;
   }
@@ -2508,31 +2722,65 @@ function SEARCH(find_text, within_text, position) {
   return error$2.value;
 }
 
-// SIN calculates the sinine of a value.
-function SIN(value) {
+function second(value) {
 
-  if (!ISNUMBER(value)) {
+  // calculate total seconds
+  var totalSeconds = (value - trunc(value)) * SecondsInDay;
+
+  // calculate number of seconds for hour component
+  var hourSeconds = trunc(totalSeconds / SecondsInHour) * SecondsInHour;
+
+  // calculate number of seconds in minute component
+  var minuteSeconds = trunc((totalSeconds - hourSeconds) / SecondsInMinute) * SecondsInMinute;
+
+  // remove seconds for hours and minutes and round to nearest value
+  return Math.round(totalSeconds - hourSeconds - minuteSeconds);
+}
+
+// SIN calculates the sinine of a value.
+function sin(value) {
+
+  if (!isnumber(value)) {
     return error$2.value;
   }
 
   return Math.sin(value);
 }
 
+// INT returns true when a needle is found in a list.
+function some(needle, list) {
+
+  // Return `#NA!` when the needle and list are blank.
+  if (isblank(needle) && isblank(list)) {
+    return error$2.na;
+  }
+
+  // Return `#NA!` when the list is not an array.
+  if (!isarray(list)) {
+    return error$2.na;
+  }
+
+  // Return true when some of the values match the needle.
+  return list.some(function (n) {
+    return eq(n, needle);
+  });
+}
+
 // SORT a reference or an array.
 //
 // The criteria may use 1 of several forms:
 //
-// SORT(reference(reference: Array, ...criteria : List<string>)
-// SORT(reference(reference: Range, ...criteria : List<string>)
+// sort(reference(reference: Array, ...criteria : List<string>)
+// sort(reference(reference: Range, ...criteria : List<string>)
 //
 // The List<function> will be reduced into a single function.
 //
 // The list<string> will also be reduced into a single function which
 // interprets the strings as pairs. The odd items are fields and the
 // even ones are direction (ASC|DESC).
-function SORT(ref) {
-  for (var _len13 = arguments.length, criteria = Array(_len13 > 1 ? _len13 - 1 : 0), _key13 = 1; _key13 < _len13; _key13++) {
-    criteria[_key13 - 1] = arguments[_key13];
+function sort(ref) {
+  for (var _len14 = arguments.length, criteria = Array(_len14 > 1 ? _len14 - 1 : 0), _key14 = 1; _key14 < _len14; _key14++) {
+    criteria[_key14 - 1] = arguments[_key14];
   }
 
   // reduce the criteria array into a function
@@ -2554,7 +2802,7 @@ function SORT(ref) {
     };
   };
 
-  if (ISREF(ref) || Array.isArray(ref)) {
+  if (isref(ref) || isarray(ref)) {
     return ref.sort(makeComparer());
   }
 
@@ -2564,14 +2812,14 @@ function SORT(ref) {
 // Copyright 2015 Peter W Moresi
 
 // SPLIT `text` given a `delimiter`.
-function SPLIT(text, delimiter) {
+function split(text, delimiter) {
   return text.split(delimiter);
 }
 
 // Copyright 2015 Peter W Moresi
 
 // SUBSTITUTE `old_text` with `new_text` a given number of occurrences in `text`.
-function SUBSTITUTE(text, old_text, new_text, occurrence) {
+function substitute(text, old_text, new_text, occurrence) {
   if (!text || !old_text || !new_text) {
     return text;
   } else if (occurrence === undefined) {
@@ -2590,9 +2838,9 @@ function SUBSTITUTE(text, old_text, new_text, occurrence) {
 }
 
 // SUBTRACT calculates the difference of two numbers.
-function SUBTRACT() {
-  for (var _len14 = arguments.length, values = Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
-    values[_key14] = arguments[_key14];
+function subtract() {
+  for (var _len15 = arguments.length, values = Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
+    values[_key15] = arguments[_key15];
   }
 
   // Return `#NA!` if 2 arguments are not provided.
@@ -2606,7 +2854,7 @@ function SUBTRACT() {
 
   // Return `#VALUE!` if either a or b is not a number.
 
-  if (!ISNUMBER(a) || !ISNUMBER(b)) {
+  if (!isnumber(a) || !isnumber(b)) {
     return error$2.value;
   }
 
@@ -2615,9 +2863,9 @@ function SUBTRACT() {
 }
 
 // TAN computes the tagent of a value.
-function TAN(value) {
+function tan(value) {
 
-  if (!ISNUMBER(value)) {
+  if (!isnumber(value)) {
     return error$2.value;
   }
 
@@ -2625,7 +2873,7 @@ function TAN(value) {
 }
 
 // TAU returns the universal circle constant
-function TAU() {
+function tau() {
   return τ;
 }
 
@@ -2673,9 +2921,7 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
   currency_char = currency_char || DefaultCurrency;
 
   FormatNumber.parse_format_string(scfn.format_definitions, format_string); // make sure format is parsed
-  //console.log("format_string", format_string, format)
   format = scfn.format_definitions[format_string]; // Get format structure
-  //console.log("format", format)
 
   if (!format) throw 'Format not parsed error.';
 
@@ -2731,8 +2977,8 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
           negativevalue = 0; // sign will provided by section, not automatically
           section = 1; // use second section for negative values
         } else {
-            section = 0; // use first for all others
-          }
+          section = 0; // use first for all others
+        }
       }
       // three sections
       else if (section == 2) {
@@ -2740,10 +2986,10 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
             negativevalue = 0; // sign will provided by section, not automatically
             section = 1; // use second section for negative values
           } else if (zerovalue) {
-              section = 2; // use third section for zero values
-            } else {
-                section = 0; // use first for positive
-              }
+            section = 2; // use third section for zero values
+          } else {
+            section = 0; // use first for positive
+          }
         }
     }
 
@@ -2781,8 +3027,6 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
     negativevalue = 0; // no "-0" unless using multiple sections or General
   }
 
-  //console.log(rawvalue+'')
-
   // converted to scientific notation
   if (strvalue.indexOf('e') >= 0) {
     return rawvalue + ''; // Just return plain converted raw value
@@ -2797,7 +3041,6 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
 
   // there are date placeholders
   if (sectioninfo.hasdate) {
-    //console.log('hasdate')
     // bad date
     if (rawvalue < 0) {
       return '??-???-?? ??:??:??';
@@ -2834,7 +3077,7 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
     fractionvalue = secs - Math.floor(secs) + ''; // for "hh:mm:ss.000"
     fractionvalue = fractionvalue.substring(2); // skip "0."
 
-    ymd = PARSEDATE(rawvalue);
+    ymd = parsedate(rawvalue);
     ymd = {
       year: ymd.getFullYear(),
       month: ymd.getMonth() + 1,
@@ -2852,11 +3095,12 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
       if (op == scfn.commands.date) {
         if ((operandstr.toLowerCase() == 'am/pm' || operandstr.toLowerCase() == 'a/p') && !ampmstr) {
           if (hrs >= 12) {
-            hrs -= 12;
+            if (hrs > 12) hrs -= 12;
             ampmstr = operandstr.toLowerCase() == 'a/p' ? PM1 : PM; // "P" : "PM";
           } else {
-              ampmstr = operandstr.toLowerCase() == 'a/p' ? AM1 : AM; // "A" : "AM";
-            }
+            if (hrs === 0) hrs = 12;
+            ampmstr = operandstr.toLowerCase() == 'a/p' ? AM1 : AM; // "A" : "AM";
+          }
           if (operandstr.indexOf(ampmstr) < 0) ampmstr = ampmstr.toLowerCase(); // have case match case in format
         }
         if (minOK && (operandstr == 'm' || operandstr == 'mm')) {
@@ -2865,8 +3109,8 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
         if (operandstr.charAt(0) == 'h') {
           minOK = 1; // m following h or hh or [h] is minutes not months
         } else {
-            minOK = 0;
-          }
+          minOK = 0;
+        }
       } else if (op != scfn.commands.copy) {
         // copying chars can be between h and m
         minOK = 0;
@@ -2886,8 +3130,8 @@ FormatNumber.formatNumberWithFormat = function (rawvalue, format_string, currenc
         if (operandstr == 'ss') {
           minOK = 1; // m before ss is minutes not months
         } else {
-            minOK = 0;
-          }
+          minOK = 0;
+        }
       } else if (op != scfn.commands.copy) {
         // copying chars can be between ss and m
         minOK = 0;
@@ -3254,7 +3498,6 @@ FormatNumber.parse_format_string = function (format_defs, format_string) {
 
     // last char was part of a date placeholder
     if (indate) {
-      //console.log('foo')
       if (indate.charAt(0) == ch) {
         // another of the same char
         indate += ch; // accumulate it
@@ -3352,7 +3595,6 @@ FormatNumber.parse_format_string = function (format_defs, format_string) {
       ampmstr = ch;
       lastwasinteger = 0;
     } else if ('dmyhHs'.indexOf(ch) >= 0) {
-      //console.log('foo')
       indate = ch;
     } else {
       lastwasinteger = 0;
@@ -3429,12 +3671,21 @@ FormatNumber.parse_format_bracket = function (bracketstr) {
   return bracketdata;
 };
 
-function TEXT(value, format, currency_char) {
+function text(value, format, currency_char) {
   return FormatNumber.formatNumberWithFormat(value, format, currency_char);
 }
 
+function time(hour, minute, second) {
+  return +((hour * 3600 + minute * 60 + second) / SecondsInDay).toFixed(15);
+}
+
+function today() {
+  var d = new Date();
+  return datevalue(d.toLocaleDateString());
+};
+
 // TRIMS returns a string without whitespace at the beginning or end.
-function TRIM(text) {
+function trim(text) {
   if (typeof text !== 'string') {
     return error$2.value;
   }
@@ -3444,18 +3695,18 @@ function TRIM(text) {
 // Copyright 2015 Peter W Moresi
 
 // UPPER converts a string to upper case
-function UPPER(string) {
+function upper(string) {
   return string.toUpperCase();
 }
 
 // VLOOKUP find a needle in a table searching vertically.
-function VLOOKUP(needle) {
+function vlookup(needle) {
   var table = arguments.length <= 1 || arguments[1] === undefined ? [] : arguments[1];
   var index = arguments.length <= 2 || arguments[2] === undefined ? 1 : arguments[2];
   var exactmatch = arguments.length <= 3 || arguments[3] === undefined ? false : arguments[3];
 
 
-  if (ISERROR(needle) || ISBLANK(needle)) {
+  if (iserror(needle) || isblank(needle)) {
     return needle;
   }
 
@@ -3475,12 +3726,12 @@ function VLOOKUP(needle) {
 }
 
 // XOR computes the exclusive or for a given set of `values`.
-function XOR() {
-  for (var _len15 = arguments.length, values = Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
-    values[_key15] = arguments[_key15];
+function xor() {
+  for (var _len16 = arguments.length, values = Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
+    values[_key16] = arguments[_key16];
   }
 
-  return !!(FLATTEN(values).reduce(function (a, b) {
+  return !!(flatten(values).reduce(function (a, b) {
     if (b) {
       return a + 1;
     }
@@ -3488,105 +3739,272 @@ function XOR() {
   }, 0) & 1);
 }
 
-exports.ABS = ABS;
-exports.ACOS = ACOS;
-exports.ADD = ADD;
-exports.AND = AND;
-exports.AVERAGE = AVERAGE;
-exports.BIN2DEC = BIN2DEC;
-exports.CELLINDEX = CELLINDEX;
-exports.CHANGED = CHANGED;
-exports.CHOOSE = CHOOSE;
-exports.CLEAN = CLEAN;
-exports.CODE = CODE;
-exports.COLUMN = COLUMN;
-exports.COLUMNLETTER = COLUMNLETTER;
-exports.COLUMNNUMBER = COLUMNNUMBER;
-exports.CONCATENATE = CONCATENATE;
-exports.COND = COND;
-exports.CONTAINS = CONTAINS;
-exports.COS = COS;
-exports.DATE = DATE;
-exports.DATEVALUE = DATEVALUE;
-exports.DATEDIF = DATEDIF;
-exports.DAYS360 = DAYS360;
-exports.DEC2BIN = DEC2BIN;
-exports.DIFF = DIFF;
-exports.DIVIDE = DIVIDE;
-exports.EQ = EQ;
-exports.EXACT = EXACT;
-exports.FILTER = FILTER;
-exports.FIND = FIND;
-exports.FLATTEN = FLATTEN;
-exports.GT = GT;
-exports.GTE = GTE;
-exports.GUID = GUID;
-exports.HLOOKUP = HLOOKUP;
-exports.IF = IF;
-exports.IFBLANK = IFBLANK;
-exports.IFEMPTY = IFEMPTY;
-exports.IFERROR = IFERROR;
-exports.IFNA = IFNA;
-exports.IN = IN;
-exports.INDEX2COL = INDEX2COL;
-exports.INDEX2ROW = INDEX2ROW;
-exports.INDIRECT = INDIRECT;
-exports.ISARRAY = ISARRAY;
-exports.ISBLANK = ISBLANK;
-exports.ISDATE = ISDATE;
-exports.ISEMAIL = ISEMAIL;
-exports.ISEMPTY = ISEMPTY;
-exports.ISERROR = ISERROR;
-exports.ISEVEN = ISEVEN;
-exports.ISFUNCTION = ISFUNCTION;
-exports.ISNA = ISNA;
-exports.ISNUMBER = ISNUMBER;
-exports.ISODD = ISODD;
-exports.ISREF = ISREF;
-exports.ISTEXT = ISTEXT;
-exports.ISURL = ISURL;
-exports.LEN = LEN;
-exports.LOOKUP = LOOKUP;
-exports.LOWER = LOWER;
-exports.LT = LT;
-exports.LTE = LTE;
-exports.MIN = MIN;
-exports.MAX = MAX;
-exports.MULTIPLY = MULTIPLY;
-exports.N = N;
-exports.NUMBERVALUE = NUMBERVALUE;
-exports.NE = NE;
-exports.NOT = NOT;
-exports.OCT2DEC = OCT2DEC;
-exports.OR = OR;
-exports.PARSEBOOL = PARSEBOOL;
-exports.PARSEDATE = PARSEDATE;
-exports.PI = PI;
-exports.PMT = PMT;
-exports.POWER = POWER;
-exports.REF = REF;
-exports.REPLACE = REPLACE;
-exports.REPT = REPT;
-exports.RIGHT = RIGHT;
-exports.ROUND = ROUND;
-exports.ROUNDUP = ROUNDUP;
-exports.SEARCH = SEARCH;
-exports.SELECT = SELECT;
-exports.SERIAL = SERIAL;
-exports.SIN = SIN;
-exports.SORT = SORT;
-exports.SPLIT = SPLIT;
-exports.SUBSTITUTE = SUBSTITUTE;
-exports.SUBTRACT = SUBTRACT;
-exports.SUM = SUM;
-exports.TAN = TAN;
-exports.TAU = TAU;
-exports.TEXT = TEXT;
-exports.TRIM = TRIM;
-exports.UNIQUE = UNIQUE;
-exports.UPPER = UPPER;
-exports.VLOOKUP = VLOOKUP;
-exports.XOR = XOR;
+// YEAR parses a date value and returns the year of the year.
+function year(d) {
+  return parsedate(d).getFullYear();
+}
+
+function yearfrac(start_date, end_date, basis) {
+  start_date = parsedate(start_date);
+  if (start_date instanceof Error) {
+    return start_date;
+  }
+  end_date = parsedate(end_date);
+  if (end_date instanceof Error) {
+    return end_date;
+  }
+
+  basis = basis || 0;
+  var sd = start_date.getDate();
+  var sm = start_date.getMonth() + 1;
+  var sy = start_date.getFullYear();
+  var ed = end_date.getDate();
+  var em = end_date.getMonth() + 1;
+  var ey = end_date.getFullYear();
+
+  function isLeapYear(year) {
+    return year % 4 === 0 && year % 100 !== 0 || year % 400 === 0;
+  }
+  function daysBetween(a, b) {
+    return serial(b) - serial(a);
+  }
+
+  switch (basis) {
+    case 0:
+      // US (NASD) 30/360
+      if (sd === 31 && ed === 31) {
+        sd = 30;
+        ed = 30;
+      } else if (sd === 31) {
+        sd = 30;
+      } else if (sd === 30 && ed === 31) {
+        ed = 30;
+      }
+      return (ed + em * 30 + ey * 360 - (sd + sm * 30 + sy * 360)) / 360;
+    case 1:
+      // Actual/actual
+      var feb29Between = function feb29Between(date1, date2) {
+        var year1 = date1.getFullYear();
+        var mar1year1 = new Date(year1, 2, 1);
+        if (isLeapYear(year1) && date1 < mar1year1 && date2 >= mar1year1) {
+          return true;
+        }
+        var year2 = date2.getFullYear();
+        var mar1year2 = new Date(year2, 2, 1);
+        return isLeapYear(year2) && date2 >= mar1year2 && date1 < mar1year2;
+      };
+      var ylength = 365;
+      if (sy === ey || sy + 1 === ey && (sm > em || sm === em && sd >= ed)) {
+        if (sy === ey && isLeapYear(sy) || feb29Between(start_date, end_date) || em === 1 && ed === 29) {
+          ylength = 366;
+        }
+        return daysBetween(start_date, end_date) / ylength;
+      }
+      var years = ey - sy + 1;
+      var days = (new Date(ey + 1, 0, 1) - new Date(sy, 0, 1)) / 1000 / 60 / 60 / 24;
+      var average = days / years;
+      return daysBetween(start_date, end_date) / average;
+    case 2:
+      // Actual/360
+      return daysBetween(start_date, end_date) / 360;
+    case 3:
+      // Actual/365
+      return daysBetween(start_date, end_date) / 365;
+    case 4:
+      // European 30/360
+      return (ed + em * 30 + ey * 360 - (sd + sm * 30 + sy * 360)) / 360;
+  }
+};
+
+// Copyright 2015 Peter W Moresi
+
+// FunctionFoundry is a collection of pure functions.
+//
+// The functions accept input and produce output. They do not create side effects and are therefore composable.
+//
+// The library is organized several core compatibilities:
+//
+// 1. Logical functions
+//   - and, or, nor, eq, ne, gt, gte, lt, lte, branch and more...
+//
+// 2. Math functions
+//   - add, subtract, multiply, divide, sin, cos, ect...
+//
+// 3. Text manipulation
+//   - text, numbervalue, split and more...
+//
+// 4. Lookup and reference/
+//   - lookup, vlookup, hlookup and more...
+//
+// 5. Date manipulation
+//   - Functions withsSupport for spreadsheet serial numbers like date, datedif and more...
+//
+// 6. Aggregation
+//   - sum, average, min, max
+//
+// The library currently is approaching 100 functions. The long term goal is to support the ~300 functions supported by modern spreadsheet software.
+//
+// The test suite includes over ~600 assertions to ensure high quality and provide usage examples.
+
+// Polyfill Number.isNaN
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isNaN
+Number.isNaN = Number.isNaN || function (value) {
+  return value !== value;
+};
+
+exports.abs = abs;
+exports.acos = acos;
+exports.add = add;
+exports.and = and;
+exports.average = average;
+exports.bin2dec = bin2dec;
+exports.branch = branch;
+exports.cond = branch;
+exports.cellindex = cellindex;
+exports.cellIndex = cellindex;
+exports.changed = changed;
+exports.choose = choose;
+exports.clean = clean;
+exports.code = code;
+exports.column = column;
+exports.columnletter = columnletter;
+exports.columnLetter = columnletter;
+exports.columnnumber = columnnumber;
+exports.concatenate = concatenate;
+exports.cos = cos;
+exports.date = date;
+exports.datevalue = datevalue;
+exports.dateValue = datevalue;
+exports.datedif = datedif;
+exports.day = day;
+exports.days360 = days360;
+exports.dec2bin = dec2bin;
+exports.diff = diff;
+exports.divide = divide;
+exports.edate = edate;
+exports.eomonth = eomonth;
+exports.eq = eq;
+exports.exact = exact;
+exports.filter = filter;
+exports.find = find;
+exports.flatten = flatten;
+exports.fv = fv;
+exports.gt = gt;
+exports.gte = gte;
+exports.guid = guid;
+exports.hlookup = hlookup;
+exports.hour = hour;
+exports.int = int;
+exports.ifblank = ifblank;
+exports.ifBlank = ifblank;
+exports.ifempty = ifempty;
+exports.ifEmpty = ifempty;
+exports.iferror = iferror;
+exports.ifError = iferror;
+exports.ifna = ifna;
+exports.ifNA = ifna;
+exports.index2col = index2col;
+exports.index2row = index2row;
+exports.indirect = indirect;
+exports.isarray = isarray;
+exports.isArray = isarray;
+exports.isblank = isblank;
+exports.isBlank = isblank;
+exports.isboolean = isboolean;
+exports.isbool = isboolean;
+exports.isBoolean = isboolean;
+exports.isBool = isboolean;
+exports.isdate = isdate;
+exports.isDate = isdate;
+exports.isemail = isemail;
+exports.isEmail = isemail;
+exports.isempty = isempty;
+exports.isEmpty = isempty;
+exports.iserror = iserror;
+exports.isError = iserror;
+exports.iseven = iseven;
+exports.isEven = iseven;
+exports.isfunction = isfunction;
+exports.isFunction = isfunction;
+exports.isleapyear = isleapyear;
+exports.isLeapYear = isleapyear;
+exports.isna = isna;
+exports.isNA = isna;
+exports.isnumber = isnumber;
+exports.isNumber = isnumber;
+exports.isodd = isodd;
+exports.isOdd = isodd;
+exports.isoweeknum = isoweeknum;
+exports.isoWeekNum = isoweeknum;
+exports.isref = isref;
+exports.isRef = isref;
+exports.istext = istext;
+exports.isText = istext;
+exports.isurl = isurl;
+exports.ISURL = isurl;
+exports.left = left;
+exports.len = len;
+exports.lookup = lookup;
+exports.lower = lower;
+exports.lt = lt;
+exports.lte = lte;
+exports.min = min;
+exports.minute = minute;
+exports.max = max;
+exports.month = month;
+exports.multiply = multiply;
+exports.n = n;
+exports.numbervalue = numbervalue;
+exports.numberValue = numbervalue;
+exports.ne = ne;
+exports.not = not;
+exports.now = now;
+exports.npv = npv;
+exports.nper = nper;
+exports.oct2dec = oct2dec;
+exports.or = or;
+exports.parsebool = parsebool;
+exports.parseBool = parsebool;
+exports.parsedate = parsedate;
+exports.parseDate = parsedate;
+exports.parsequery = parsequery;
+exports.parseQuery = parsequery;
+exports.pi = pi;
+exports.pmt = pmt;
+exports.power = power;
+exports.pv = pv;
+exports.ref = ref$1;
+exports.replace = replace;
+exports.rept = rept;
+exports.right = right;
+exports.round = round;
+exports.roundup = roundup;
+exports.search = search;
+exports.second = second;
+exports.select = select;
+exports.serial = serial;
+exports.sin = sin;
+exports.some = some;
+exports.in = some;
+exports.sort = sort;
+exports.split = split;
+exports.substitute = substitute;
+exports.subtract = subtract;
+exports.sum = sum;
+exports.tan = tan;
+exports.tau = tau;
+exports.text = text;
+exports.time = time;
+exports.timevalue = timevalue;
+exports.today = today;
+exports.trim = trim;
+exports.trunc = trunc;
+exports.unique = unique;
+exports.upper = upper;
+exports.vlookup = vlookup;
+exports.xor = xor;
+exports.year = year;
+exports.yearfrac = yearfrac;
 
 
 },{}],6:[function(require,module,exports){
@@ -3821,6 +4239,31 @@ var substr = 'ab'.substr(-1) === 'b'
 // shim for using process in browser
 
 var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+(function () {
+  try {
+    cachedSetTimeout = setTimeout;
+  } catch (e) {
+    cachedSetTimeout = function () {
+      throw new Error('setTimeout is not defined');
+    }
+  }
+  try {
+    cachedClearTimeout = clearTimeout;
+  } catch (e) {
+    cachedClearTimeout = function () {
+      throw new Error('clearTimeout is not defined');
+    }
+  }
+} ())
 var queue = [];
 var draining = false;
 var currentQueue;
@@ -3845,7 +4288,7 @@ function drainQueue() {
     if (draining) {
         return;
     }
-    var timeout = setTimeout(cleanUpNextTick);
+    var timeout = cachedSetTimeout.call(null, cleanUpNextTick);
     draining = true;
 
     var len = queue.length;
@@ -3862,7 +4305,7 @@ function drainQueue() {
     }
     currentQueue = null;
     draining = false;
-    clearTimeout(timeout);
+    cachedClearTimeout.call(null, timeout);
 }
 
 process.nextTick = function (fun) {
@@ -3874,7 +4317,7 @@ process.nextTick = function (fun) {
     }
     queue.push(new Item(fun, args));
     if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
+        cachedSetTimeout.call(null, drainQueue, 0);
     }
 };
 

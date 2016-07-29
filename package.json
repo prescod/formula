@@ -1,14 +1,14 @@
 {
   "name": "formulafoundry",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Compile spreadsheet formula to JavaScript.",
-  "main": "compiler.js",
+  "main": "lib/compiler.js",
   "scripts": {
     "build:compiler": "babel src/compiler.js -m commonjs --out-file lib/compiler.js",
     "build:parser": "jison src/parser.jison -m commonjs -o lib/parser.js",
     "build:dist": "browserify ./browserify.js > dist/formulafoundry.js && browserify -g uglifyify ./browserify.js > dist/formulafoundry.min.js",
     "build": "npm run build:parser && npm run build:compiler && npm run build:dist",
-    "test": "babel-tape-runner tests/*.js"
+    "test": "tape tests/*.js"
   },
   "repository": {
     "type": "git",
@@ -25,18 +25,16 @@
   },
   "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
   "dependencies": {
-    "browserify": "^13.0.1",
-    "functionfoundry": "^0.9.11",
-    "uglifyify": "^3.0.1"
+    "functionfoundry": "^0.10.14"
   },
   "devDependencies": {
-    "babel-cli": "^6.1.2",
-    "babel-core": "^6.1.2",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.1.3",
-    "babel-preset-es2015": "^6.1.2",
-    "babel-tape-runner": "^2.0.1",
-    "faucet": "0.0.1",
+    "babel-cli": "^6.11.4",
+    "babel-core": "^6.11.4",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.11.5",
+    "babel-preset-es2015": "^6.9.0",
+    "browserify": "^13.0.1",
     "jison": "^0.4.17",
-    "tape": "^4.5.1"
+    "tape": "^4.6.0",
+    "uglifyify": "^3.0.2"
   }
 }
