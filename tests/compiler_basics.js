@@ -1,5 +1,5 @@
 var test = require('tape')
-var {compile} = require('../lib/compiler')
+var compile = require('../lib/compiler').compile
 
 test('compiler should pass basic tests', function(t) {
 
