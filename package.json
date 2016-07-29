@@ -1,9 +1,6 @@
 {
   "name": "formulafoundry",
   "version": "0.3.0",
-  "publishConfig": {
-    "tag": "next"
-  },
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
