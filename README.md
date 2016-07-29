@@ -2,7 +2,7 @@
 
 ![circleci](https://circleci.com/gh/FunctionFoundry/formulafoundry.svg?style=shield&circle-token=:circle-token)
 
-Compile formulas to JavaScript functions. See [docs](./Formulas.org) for formula syntax.
+Formula language for Node.js and Browser. See [docs](./Formulas.org) for language syntax.
 
 ## Install
 
@@ -17,12 +17,12 @@ Compile formulas to JavaScript functions. See [docs](./Formulas.org) for formula
 Then you need a data object and a context that supports
 a `get` function.
 
-    var data = { SuccessText: "Works!" };
+    var data = { successText: "Works!", errorText: "Broken!" };
     var context = { get: function(key) { return data[key]; } };
 
 Use the compiler to generate a function.
 
-    var myFunction = compiler.compile('IF(TRUE, SuccessText, "Broken")');
+    var myFunction = compiler.compile('if(true, successText, errorText)');
 
 Run the function passing back in the requirements by calling resolve().
 
@@ -30,7 +30,7 @@ Run the function passing back in the requirements by calling resolve().
 
 ## Properties
 
-The function comes with metadata.
+The function includes properties:
 
 The identifier:
 
@@ -40,7 +40,7 @@ The abstract syntax tree:
 
     myFunction.ast
 
-The list of required libraries:
+The list of required functions:
 
     myFunction.requires
 
