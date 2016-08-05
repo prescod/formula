@@ -1,6 +1,6 @@
 {
   "name": "formulafoundry",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
   "dependencies": {
-    "functionfoundry": "^0.10.14"
+    "functionfoundry": "^0.10.20"
   },
   "devDependencies": {
     "babel-cli": "^6.11.4",

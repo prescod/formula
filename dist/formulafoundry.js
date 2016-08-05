@@ -178,7 +178,7 @@ function compile(exp) {
 
   var compiled = compiler(ast);
 
-  f = new Function('context', '/* formula: ' + exp + ' */\nreturn (' + compiled + ');\n//# sourceURL=formulafoundry_' + id + '\n').bind(FF);
+  f = new Function('context', '/* formula: ' + exp + ' */\nreturn (' + compiled + ');\n//# sourceURL=formulafoundry_' + id + '\n').bind(functions);
 
   f.id = id;
   f.exp = exp;
@@ -196,12 +196,12 @@ function run(exp) {
   var locals = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
   var requires = arguments[2];
 
-  var compiled = FF.isfunction(exp) ? exp : compile(exp);
+  var compiled = functions.isfunction(exp) ? exp : compile(exp);
   var r = requires;
 
   if (typeof requires === 'undefined') {
     r = compiled.requires.reduce(function (out, name) {
-      out[name] = FF[name];
+      out[name] = functions[name];
       return out;
     }, {});
   }
@@ -1897,6 +1897,11 @@ function fv(rate, periods, payment) {
   return -fv;
 };
 
+// get a property (p) from an object (o)
+function get(p, o) {
+  return o[p];
+}
+
 function gt(a, b) {
   if (isref(a) && isref(b)) {
     return error$2.na;
@@ -2014,6 +2019,33 @@ function iferror(value) {
 // IFBLANK return the `value` if `#NA!`, otherwise it returns `value_if_na`.
 function ifna(value, value_if_na) {
   return value === error$2.na ? value_if_na : value;
+}
+
+// index returns the value in a row and column from a 2d array
+function index(reference, row_num) {
+  var column_num = arguments.length <= 2 || arguments[2] === undefined ? 1 : arguments[2];
+
+  var row;
+
+  if (!isarray(reference) || isblank(row_num)) {
+    return error$2.value;
+  }
+
+  if (reference.length < row_num) {
+    return error$2.ref;
+  }
+
+  row = reference[row_num - 1];
+
+  if (!isarray(row)) {
+    return error$2.value;
+  }
+
+  if (row.length < column_num) {
+    return error$2.ref;
+  }
+
+  return row[column_num - 1];
 }
 
 // INDEX2COL computes the row given a cell index
@@ -2204,6 +2236,22 @@ function isurl(str) {
   return pattern.test(str);
 }
 
+// combine a array of strings/numbers into a single string
+function join(list) {
+  var delim = arguments.length <= 1 || arguments[1] === undefined ? ', ' : arguments[1];
+
+
+  // all values must be string or number
+  if (list.some(function (d) {
+    return typeof d !== 'string' && typeof d !== 'number';
+  })) {
+    return error$2.value;
+  }
+
+  // defer to JS implementation
+  return list.join(delim);
+}
+
 // N converts a `value` to a number. It supports numbers, true, false and dates.
 function n(value) {
 
@@ -2338,6 +2386,85 @@ function lte(a, b) {
   }
 }
 
+// MATCH returns an index in `array_reference` by searching for `lookup_reference`.
+function match(lookup_reference, array_reference, matchType) {
+
+  var lookupArray, lookupValue, index, indexValue;
+
+  // Gotta have only 2 arguments folks!
+  if (arguments.length === 2) {
+    matchType = 1;
+  }
+
+  // Find the lookup value inside a worksheet cell, if needed.
+  lookupValue = lookup_reference;
+
+  // Find the array inside a worksheet range, if needed.
+  if (isarray(array_reference)) {
+    lookupArray = array_reference;
+  } else {
+    return error$2.na;
+  }
+
+  // Gotta have both lookup value and array
+  if (!lookupValue && !lookupArray) {
+    return error$2.na;
+  }
+
+  // Bail on weird match types!
+  if (matchType !== -1 && matchType !== 0 && matchType !== 1) {
+    return error$2.na;
+  }
+
+  for (var idx = 0; idx < lookupArray.length; idx++) {
+    if (matchType === 1) {
+      if (lookupArray[idx] === lookupValue) {
+        return idx + 1;
+      } else if (lookupArray[idx] < lookupValue) {
+        if (!indexValue) {
+          index = idx + 1;
+          indexValue = lookupArray[idx];
+        } else if (lookupArray[idx] > indexValue) {
+          index = idx + 1;
+          indexValue = lookupArray[idx];
+        }
+      }
+    } else if (matchType === 0) {
+      if (typeof lookupValue === 'string') {
+        // '?' is mapped to the regex '.'
+        // '*' is mapped to the regex '.*'
+        // '~' is mapped to the regex '\?'
+        if (idx === 0) {
+          lookupValue = "^" + lookupValue.replace(/\?/g, '.').replace(/\*/g, '.*').replace(/~/g, '\\?') + "$";
+        }
+        if (typeof lookupArray[idx] !== "undefined") {
+          if (String(lookupArray[idx]).toLowerCase().match(String(lookupValue).toLowerCase())) {
+            return idx + 1;
+          }
+        }
+      } else {
+        if (typeof lookupArray[idx] !== "undefined" && lookupArray[idx] !== null && lookupArray[idx].valueOf() === lookupValue) {
+          return idx + 1;
+        }
+      }
+    } else if (matchType === -1) {
+      if (lookupArray[idx] === lookupValue) {
+        return idx + 1;
+      } else if (lookupArray[idx] > lookupValue) {
+        if (!indexValue) {
+          index = idx + 1;
+          indexValue = lookupArray[idx];
+        } else if (lookupArray[idx] < indexValue) {
+          index = idx + 1;
+          indexValue = lookupArray[idx];
+        }
+      }
+    }
+  }
+
+  return index ? index : error$2.na;
+};
+
 // MIN returns the smallest number from a `list`.
 function min() {
   for (var _len8 = arguments.length, list = Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
@@ -2358,6 +2485,13 @@ function minute(value) {
   var hourSeconds = trunc(totalSeconds / SecondsInHour) * SecondsInHour;
   // calculate the number seconds after remove seconds from the hours and convert to minutes
   return trunc((totalSeconds - hourSeconds) / SecondsInMinute);
+}
+
+// map an array to a new array
+function map(arr, f) {
+  return arr.map(function (d) {
+    return f(d);
+  });
 }
 
 // MAX returns the largest number from a `list`.
@@ -2401,6 +2535,17 @@ function multiply() {
 
   // Return the product
   return a * b;
+}
+
+function numbers() {
+  for (var _len11 = arguments.length, values = Array(_len11), _key11 = 0; _key11 < _len11; _key11++) {
+    values[_key11] = arguments[_key11];
+  }
+
+  console.log(values);
+  return values.reduce(function (p, v) {
+    return isnumber(v) ? p.concat(v) : p;
+  }, []);
 }
 
 // Convert a text value into a number value.
@@ -2484,8 +2629,8 @@ function npv(rate) {
   var factor = 1,
       sum = 0;
 
-  for (var _len11 = arguments.length, values = Array(_len11 > 1 ? _len11 - 1 : 0), _key11 = 1; _key11 < _len11; _key11++) {
-    values[_key11 - 1] = arguments[_key11];
+  for (var _len12 = arguments.length, values = Array(_len12 > 1 ? _len12 - 1 : 0), _key12 = 1; _key12 < _len12; _key12++) {
+    values[_key12 - 1] = arguments[_key12];
   }
 
   for (var i = 0; i < values.length; i++) {
@@ -2558,8 +2703,8 @@ function oct2dec(octalNumber) {
 
 // OR returns true when any of the criter is true or 1.
 function or() {
-  for (var _len12 = arguments.length, criteria = Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
-    criteria[_key12] = arguments[_key12];
+  for (var _len13 = arguments.length, criteria = Array(_len13), _key13 = 0; _key13 < _len13; _key13++) {
+    criteria[_key13] = arguments[_key13];
   }
 
   return criteria.reduce(function (acc, item) {
@@ -2594,6 +2739,17 @@ function pi() {
   return τ / 2;
 }
 
+// pluck a property from a list of objects
+function pluck(prop, list) {
+  if (!isarray(list)) {
+    return error$2.na;
+  }
+
+  return list.map(function (d) {
+    return d[prop];
+  });
+}
+
 // PMT returns a loan payment
 function pmt(rate, periods, present) {
   var future = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
@@ -2618,8 +2774,8 @@ function pmt(rate, periods, present) {
 
 // POWER computes the power of a value and nth degree.
 function power() {
-  for (var _len13 = arguments.length, values = Array(_len13), _key13 = 0; _key13 < _len13; _key13++) {
-    values[_key13] = arguments[_key13];
+  for (var _len14 = arguments.length, values = Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
+    values[_key14] = arguments[_key14];
   }
 
   // Return `#NA!` if 2 arguments are not provided.
@@ -2657,6 +2813,13 @@ function pv(rate, periods, payment) {
     return ((1 - Math.pow(1 + rate, periods)) / rate * payment * (1 + rate * type) - future) / Math.pow(1 + rate, periods);
   }
 };
+
+// reduce an array to a value
+function reduce(arr, f) {
+  return arr.reduce(function (p, v) {
+    return f(p, v);
+  });
+}
 
 // REPLACE returns a new string after replacing with `new_text`.
 function replace(text, position, length, new_text) {
@@ -2779,8 +2942,8 @@ function some(needle, list) {
 // interprets the strings as pairs. The odd items are fields and the
 // even ones are direction (ASC|DESC).
 function sort(ref) {
-  for (var _len14 = arguments.length, criteria = Array(_len14 > 1 ? _len14 - 1 : 0), _key14 = 1; _key14 < _len14; _key14++) {
-    criteria[_key14 - 1] = arguments[_key14];
+  for (var _len15 = arguments.length, criteria = Array(_len15 > 1 ? _len15 - 1 : 0), _key15 = 1; _key15 < _len15; _key15++) {
+    criteria[_key15 - 1] = arguments[_key15];
   }
 
   // reduce the criteria array into a function
@@ -2839,8 +3002,8 @@ function substitute(text, old_text, new_text, occurrence) {
 
 // SUBTRACT calculates the difference of two numbers.
 function subtract() {
-  for (var _len15 = arguments.length, values = Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
-    values[_key15] = arguments[_key15];
+  for (var _len16 = arguments.length, values = Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
+    values[_key16] = arguments[_key16];
   }
 
   // Return `#NA!` if 2 arguments are not provided.
@@ -3727,8 +3890,8 @@ function vlookup(needle) {
 
 // XOR computes the exclusive or for a given set of `values`.
 function xor() {
-  for (var _len16 = arguments.length, values = Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
-    values[_key16] = arguments[_key16];
+  for (var _len17 = arguments.length, values = Array(_len17), _key17 = 0; _key17 < _len17; _key17++) {
+    values[_key17] = arguments[_key17];
   }
 
   return !!(flatten(values).reduce(function (a, b) {
@@ -3889,6 +4052,7 @@ exports.filter = filter;
 exports.find = find;
 exports.flatten = flatten;
 exports.fv = fv;
+exports.get = get;
 exports.gt = gt;
 exports.gte = gte;
 exports.guid = guid;
@@ -3903,6 +4067,7 @@ exports.iferror = iferror;
 exports.ifError = iferror;
 exports.ifna = ifna;
 exports.ifNA = ifna;
+exports.index = index;
 exports.index2col = index2col;
 exports.index2row = index2row;
 exports.indirect = indirect;
@@ -3942,18 +4107,22 @@ exports.istext = istext;
 exports.isText = istext;
 exports.isurl = isurl;
 exports.ISURL = isurl;
+exports.join = join;
 exports.left = left;
 exports.len = len;
 exports.lookup = lookup;
 exports.lower = lower;
 exports.lt = lt;
 exports.lte = lte;
+exports.match = match;
 exports.min = min;
 exports.minute = minute;
+exports.map = map;
 exports.max = max;
 exports.month = month;
 exports.multiply = multiply;
 exports.n = n;
+exports.numbers = numbers;
 exports.numbervalue = numbervalue;
 exports.numberValue = numbervalue;
 exports.ne = ne;
@@ -3970,9 +4139,11 @@ exports.parseDate = parsedate;
 exports.parsequery = parsequery;
 exports.parseQuery = parsequery;
 exports.pi = pi;
+exports.pluck = pluck;
 exports.pmt = pmt;
 exports.power = power;
 exports.pv = pv;
+exports.reduce = reduce;
 exports.ref = ref$1;
 exports.replace = replace;
 exports.rept = rept;
