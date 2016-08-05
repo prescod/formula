@@ -5,7 +5,7 @@ import * as FF from 'functionfoundry'
 
 var compiledNumber = 0;
 
-export var functions = FF;
+export var functions = FF
 
 export function compile(exp) {
   var ast = exp,
@@ -156,7 +156,7 @@ export function compile(exp) {
 return (${compiled});
 //# sourceURL=formulafoundry_${id}
 `
-  ).bind(FF);
+  ).bind(functions);
 
   f.id = id;
   f.exp = exp;
@@ -172,13 +172,13 @@ return (${compiled});
 }
 
 export function run(exp, locals={}, requires) {
-  var compiled = FF.isfunction(exp) ? exp : compile(exp);
+  var compiled = functions.isfunction(exp) ? exp : compile(exp);
   var r = requires;
 
   if (typeof requires === 'undefined') {
     r = compiled.requires
       .reduce( function(out, name) {
-        out[name] = FF[name];
+        out[name] = functions[name];
         return out;
       }, {} );
   }
