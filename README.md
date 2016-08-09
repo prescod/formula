@@ -1,18 +1,18 @@
-# FormulaFoundry
+# formula
 
-![circleci](https://circleci.com/gh/FunctionFoundry/formulafoundry.svg?style=shield&circle-token=:circle-token)
+![circleci](https://circleci.com/gh/FunctionFoundry/formula.svg?style=shield&circle-token=:circle-token)
 
 Formula language for Node.js and Browser. See [docs](./Formulas.org) for language syntax.
 
 ## Install
 
-    npm install --save formulafoundry
+    npm install --save formula
 
 ## Usage
 
 1. Require the compiler.
 
-    var compiler = require('formulafoundry');
+    var compiler = require('formula');
 
 Then you need a data object and a context that supports
 a `get` function.
@@ -47,3 +47,7 @@ The list of required functions:
 The list of precedents:
 
     myFunction.precedents
+
+## dist
+
+The scripts in dist are package for the browser with browserify. They use the namespace of `formula`.
