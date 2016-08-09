@@ -1,7 +1,7 @@
 {
   "name": "formula",
-  "version": "1.0.0",
-  "description": "Compile spreadsheet formula to JavaScript.",
+  "version": "1.0.1",
+  "description": "Compile formula to JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
     "build:compiler": "babel src/compiler.js -m commonjs --out-file lib/compiler.js",
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FormulaPages/formula-compiler.git"
+    "url": "git+https://github.com/FunctionFoundry/formula.git"
   },
   "keywords": [
     "spreadsheet",
@@ -21,9 +21,9 @@
   "author": "Peter W Moresi",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/FormulaPages/formula-compiler/issues"
+    "url": "https://github.com/FunctionFoundry/formula/issues"
   },
-  "homepage": "https://github.com/FormulaPages/formula-compiler#readme",
+  "homepage": "https://github.com/FunctionFoundry/formula#readme",
   "dependencies": {
     "functionfoundry": "^0.10.20"
   },
