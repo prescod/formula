@@ -1,12 +1,12 @@
 {
-  "name": "formulafoundry",
-  "version": "0.3.1",
+  "name": "formula",
+  "version": "1.0.0",
   "description": "Compile spreadsheet formula to JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
     "build:compiler": "babel src/compiler.js -m commonjs --out-file lib/compiler.js",
     "build:parser": "jison src/parser.jison -m commonjs -o lib/parser.js",
-    "build:dist": "browserify ./browserify.js > dist/formulafoundry.js && browserify -g uglifyify ./browserify.js > dist/formulafoundry.min.js",
+    "build:dist": "browserify ./browserify.js > dist/formula.js && browserify -g uglifyify ./browserify.js > dist/formula.min.js",
     "build": "npm run build:parser && npm run build:compiler && npm run build:dist",
     "test": "tape tests/*.js"
   },

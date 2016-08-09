@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>Formula Compiler Demo</title>
-    <script src="../dist/formulafoundry.js"></script>
+    <script src="../dist/formula.js"></script>
   </head>
   <body>
     <h1>Context</h1>
@@ -31,10 +31,10 @@
 
         document.getElementById('data').textContent = JSON.stringify(data, null, 4)
         try {
-          var f = funcs[text] ? funcs[text] : FormulaFoundry.compile(text, data)
+          var f = funcs[text] ? funcs[text] : formula.compile(text, data)
           funcs[text] = f
-          window.result.textContent = FormulaFoundry.run(f, data);
-          console.log(text, FormulaFoundry.run(f, data))
+          window.result.textContent = formula.run(f, data);
+          console.log(text, formula.run(f, data))
           document.getElementById('code').textContent = f.code
           document.getElementById('formulaError').textContent = '';
           code = text;

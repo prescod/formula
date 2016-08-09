@@ -1,3 +1,3 @@
-if (typeof window === 'object' && typeof window.FormulaFoundry === 'undefined') {
-  window.FormulaFoundry = require('./lib/compiler')
+if (typeof window === 'object' && typeof window.formula === 'undefined') {
+  window.formula = require('./lib/compiler')
 }
