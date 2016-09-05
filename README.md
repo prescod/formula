@@ -1,6 +1,6 @@
 # formula
 
-![circleci](https://circleci.com/gh/FunctionFoundry/formula.svg?style=shield&circle-token=:circle-token)
+![circleci](https://circleci.com/gh/WebsiteHQ/formula.svg?style=shield&circle-token=:circle-token)
 
 Formula language for Node.js and Browser. See [docs](./Formulas.org) for language syntax.
 
