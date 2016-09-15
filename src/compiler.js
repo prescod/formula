@@ -165,8 +165,6 @@ return (${compiled});
   f.precedents = precedents;
   f.requires = requires;
 
-  console.log(f)
-
   return f
 
 }
