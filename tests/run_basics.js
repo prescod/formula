@@ -1,5 +1,6 @@
 var test = require('tape')
 var run = require('../lib/compiler').run
+var functions = require('../lib/compiler').functions
 
 test('run should pass basic tests', function(t) {
 
@@ -26,4 +27,10 @@ test('running functions should work', function(t) {
 test('run complex nesting should work', function(t) {
   t.plan(1)
   t.equal(run('2+2=((2-2+2)+(3-1))'), true)
+})
+
+
+test('functions should be there', function(t) {
+  t.plan(1)
+  t.equal(Object.keys(functions).length > 10, true)
 })
