@@ -1,6 +1,6 @@
 {
   "name": "formula",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Formula runtime for JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
