@@ -159,7 +159,7 @@ function compile(exp) {
           precedents.push(node);
         }
         if (node.scope) {
-          return 'context.get(\"' + node.scope + '\", \"' + node.name + '\")';
+          return 'context.get(\"' + node.name + '\", \"' + node.scope + '\")';
         }
         return 'context.get(\"' + node.name + '\")';
       case 'value':
@@ -207,9 +207,9 @@ function run(exp) {
 
   // if object without get method
   if (locals.get !== 'function') {
-    locals.get = function (scope, name) {
-      if (!name) return locals[scope];
-      return locals[scope] ? locals[scope][name] : undefined;
+    locals.get = function (name, scope) {
+      if (typeof scope !== 'undefined') return locals[scope] ? locals[scope][name] : undefined;
+      return locals[scope];
     };
   }
 

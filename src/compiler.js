@@ -131,8 +131,8 @@ export function compile(exp) {
 
       case 'variable':
         if (precedents && !suppress) { precedents.push(node); }
-        if (node.scope) {
-          return 'context.get(\"' + node.scope + '\", \"' + node.name + '\")';
+        if (  node.scope) {
+          return 'context.get(\"' + node.name + '\", \"' + node.scope + '\")';
         }
         return 'context.get(\"' + node.name + '\")';
       case 'value':
@@ -184,9 +184,9 @@ export function run(exp, locals={}, requires) {
 
   // if object without get method
   if (locals.get !== 'function') {
-    locals.get = (scope, name) => {
-      if (!name) return locals[scope]
-      return locals[scope] ? locals[scope][name] : undefined
+    locals.get = (name, scope) => {
+      if (typeof scope !== 'undefined') return locals[scope] ? locals[scope][name] : undefined
+      return locals[name]
     }
   }
 
