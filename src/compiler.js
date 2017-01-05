@@ -96,7 +96,7 @@ export function compile(exp) {
         return ('(' +  compiler( node.exp ) + ')');
       case 'function':
       requires.push(node.name.toLowerCase() === 'if' ? 'branch' : node.name.toLowerCase());
-      switch(node.name) {
+      switch(node.name.toLowerCase()) {
         case 'if':
         return (namespace + 'branch( ' + printFuncs(node.args) + ' )');
         case 'and':
@@ -129,17 +129,18 @@ export function compile(exp) {
         requires.push('ref');
         return ('this.ref( ' + lhs + ', ' + rhs + ' )' );
 
+      case 'variable':
+        if (precedents && !suppress) { precedents.push(node); }
+        if (node.scope) {
+          return 'context.get(\"' + node.scope + '\", \"' + node.name + '\")';
+        }
+        return 'context.get(\"' + node.name + '\")';
       case 'value':
         switch (node.subtype) {
           case 'array':
             return ('[' + printItems(node.items) + ']');
           case 'string':
             return "'" + node.value.replace(/'/g, "''") + "'";
-          case 'variable':
-
-            if (precedents && !suppress) { precedents.push(node); }
-
-            return 'context.get(\"' + node.value + '\")';
 
           default:
             return node.value;
@@ -183,7 +184,10 @@ export function run(exp, locals={}, requires) {
 
   // if object without get method
   if (locals.get !== 'function') {
-    locals.get = (propName) => locals[propName]
+    locals.get = (scope, name) => {
+      if (!name) return locals[scope]
+      return locals[scope] ? locals[scope][name] : undefined
+    }
   }
 
   return compiled.bind(r)(locals)

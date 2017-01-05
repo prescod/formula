@@ -1,5 +1,5 @@
 
-/* description: Parses end executes spreadsheet formula expressions. */
+/* description: Parses end executes spreadSCOPE formula expressions. */
 
 /* lexical grammar */
 %lex
@@ -45,7 +45,11 @@ frac                        (?:\.[0-9]+)
 [A-Za-z](?=[(])                    {return 'FUNC';}
 [A-Za-z][A-Za-z0-9\.]+(?=[(])                    {return 'FUNC';}
 \"(?:\"\"|[^"])*\"    yytext = yytext.substr(1,yyleng-2).replace(/\"\"/g, "\""); return "STRING";
-([\[\]a-zA-Z0-9.$^\!@\(]+)  return 'IDENT'
+\$\'(?:\'\'|[^'])*\'\!    yytext = yytext.substr(2,yyleng-3).replace(/\"\"/g, "\""); return "SCOPE";
+\'(?:\'\'|[^'])*\'\!    yytext = yytext.substr(1,yyleng-3).replace(/\"\"/g, "\""); return "SCOPE";
+[a-zA-Z]([a-zA-Z0-9_.$]+)?\!  yytext = yytext.slice(0, -1); return "SCOPE"
+\$([a-zA-Z])([a-zA-Z0-9_.$]+)?\!  yytext = yytext.slice(1, -1); return "SCOPE"
+([\[\]a-zA-Z0-9_.$^@\(]+)  return 'IDENT'
 <<EOF>>               return 'EOF'
 .                     return 'INVALID'
 
@@ -108,7 +112,9 @@ e
   | e ':' e
       {$$ = { type: 'range', subtype: 'local', topLeft:$1, bottomRight:$3 }; }
   | IDENT
-      { $$ = { type: 'value', subtype: 'variable', value:$1 }; }
+      { $$ = { type: 'variable', name:$1 }; }
+  | SCOPE IDENT
+      { $$ = { type: 'variable', scope: $1, name: $2 }; }
   | func
       { $$ = $1; }
   | array_literal

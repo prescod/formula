@@ -1,6 +1,6 @@
 {
   "name": "formula",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Formula runtime for JavaScript.",
   "main": "lib/compiler.js",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/WebsiteHQ/formula#readme",
   "dependencies": {
-    "functionfoundry": "^0.11.0"
+    "functionfoundry": "^0.12.1"
   },
   "devDependencies": {
     "babel-cli": "^6.11.4",

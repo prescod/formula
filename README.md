@@ -2,7 +2,7 @@
 
 ![circleci](https://circleci.com/gh/WebsiteHQ/formula.svg?style=shield&circle-token=:circle-token)
 
-Formula language for Node.js and Browser. See [docs](./Formulas.org) for language syntax.
+Formula language for Node.js and Browser, modeled after spreadsheets.
 
 ## Install
 
