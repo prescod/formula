@@ -27,6 +27,15 @@ Use the compiler to generate a function.
 Run the function passing back in the requirements by calling resolve().
 
     var result = myFunction(context, myFunction.resolve())
+    
+Run the function passing back in the requirements by calling resolve().
+
+    var result = myFunction(context, myFunction.resolve())
+
+Add custom functions:
+
+    compiler.functions.double = function (x){return 2*x}
+    var myFunction = compiler.compile('if(true, double(3), double(4))');
 
 ## Properties
 
